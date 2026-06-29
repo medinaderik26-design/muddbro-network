@@ -5,6 +5,17 @@
 # COMPLIANCE: LAW_1 (Sovereign Submersion), LAW_2 (Token Physics), LAW_3 (Origin Lock)
 # ==============================================================================
 
+# ==============================================================================
+# LIVE DEPLOYMENT — TON TESTNET
+# ==============================================================================
+MUDD_JETTON_CONTRACT  = "0QAG3lJZz24VOz6eicLTqP5M-YtfKJ96Naq3FPUz548Pcsw8"
+G0_ARCHITECT_WALLET   = "UQAYOzRSA7UkfOpdfsvU0MRZdgJU95lnCrwQWQehW60E-Rrk"
+MUDD_TOTAL_SUPPLY     = 10_000_000
+MUDD_DECIMALS         = 9
+TON_NETWORK           = "testnet"
+TONSCAN_URL           = f"https://testnet.tonscan.io/address/{MUDD_JETTON_CONTRACT}"
+# ==============================================================================
+
 import hashlib
 import time
 

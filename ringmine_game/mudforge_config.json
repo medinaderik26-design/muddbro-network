@@ -15,7 +15,7 @@
         "frequency_check": "Target stabilization met at 90Hz",
         "random_drop_chance": "Dynamic calculation"
       },
-      "success_response": "⚠️ ANOMALY DETECTED: You have unearthed a dormant Hypercube NFT Egg! Use /inventory to check its status.",
+      "success_response": "\u26a0\ufe0f ANOMALY DETECTED: You have unearthed a dormant Hypercube NFT Egg! Use /inventory to check its status.",
       "failure_response": "Scanning frequencies... No anomalies detected in this sector yet. Keep digging, Architect."
     },
     "/inventory": {
@@ -25,7 +25,7 @@
     },
     "/switch_game": {
       "action_type": "Cross_Universe_Transit",
-      "display_text": "=== DIMENSION SELECTOR ===\nChoose your universe:\n\n[1] Universe 01 — Vanguard (Inner Earth)\n[2] Universe 02 — Tuatara (Ring Mine)\n[3] Universe 03 — Resonance Realm (Hypercube)\n[0] Universe 00 — Origin Architect (You)\n\nYour MUDD balance and Regalia travel with you."
+      "display_text": "=== DIMENSION SELECTOR ===\nChoose your universe:\n\n[1] Universe 01 \u2014 Vanguard (Inner Earth)\n[2] Universe 02 \u2014 Tuatara (Ring Mine)\n[3] Universe 03 \u2014 Resonance Realm (Hypercube)\n[0] Universe 00 \u2014 Origin Architect (You)\n\nYour MUDD balance and Regalia travel with you."
     },
     "/balance": {
       "action_type": "Read_Player_Balance",
@@ -64,5 +64,13 @@
     "gravity_base": 1.0,
     "mint_source": "mintFromSimulation()",
     "asset_registry": "universalRegaliaRegistry"
+  },
+  "mudd_contract": {
+    "address": "0QAG3lJZz24VOz6eicLTqP5M-YtfKJ96Naq3FPUz548Pcsw8",
+    "network": "testnet",
+    "tonscan": "https://testnet.tonscan.io/address/0QAG3lJZz24VOz6eicLTqP5M-YtfKJ96Naq3FPUz548Pcsw8",
+    "total_supply": 10000000,
+    "decimals": 9,
+    "admin": "UQAYOzRSA7UkfOpdfsvU0MRZdgJU95lnCrwQWQehW60E-Rrk"
   }
 }
