@@ -1,0 +1,25 @@
+{
+  "type": "object",
+  "properties": {
+    "telegram_id": {
+      "type": "number"
+    },
+    "entry": {
+      "type": "string"
+    },
+    "reflection": {
+      "type": "string"
+    },
+    "mood": {
+      "type": "string"
+    },
+    "xp_earned": {
+      "type": "number"
+    },
+    "mudd_earned": {
+      "type": "number"
+    }
+  },
+  "required": [],
+  "name": "RingMineJournal"
+}

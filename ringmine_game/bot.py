@@ -28,7 +28,7 @@ from growth import (
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN_2") or os.getenv("TELEGRAM_BOT_TOKEN")
+BOT_TOKEN = "8615061793:AAHFaa0bGvciFKjZoe5OxiHQOUHRSIvprYk"  # @RingMine_Bot dedicated token
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
