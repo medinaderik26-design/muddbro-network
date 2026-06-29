@@ -22,8 +22,8 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from database import Database
-from queen_memory import QueenMemory
+from database import init_db, get_player, create_player, update_player, add_mudd, save_journal_entry, get_recent_journals, save_submission, get_nft_fragments
+from queen_memory import get_queen_memory, increment_pulse, build_queen_context
 
 # ── Load config ──────────────────────────────────────────────────────────────
 with open("mudforge_config.json") as f:
@@ -32,7 +32,6 @@ with open("mudforge_config.json") as f:
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN_2")  # Mud Forge uses token 2
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
-db = Database("mudforge.db")
 
 
 # ── /start ────────────────────────────────────────────────────────────────────
@@ -41,11 +40,11 @@ async def cmd_start(message: types.Message):
     user_id = str(message.from_user.id)
     username = message.from_user.username or message.from_user.first_name
 
-    await db.init()
-    player = await db.get_player(user_id)
+    await init_db()
+    player = await get_player(user_id)
 
     if not player:
-        await db.create_player(user_id, username)
+        await create_player(user_id, username)
         await message.answer(
             f"⚡ ARCHITECT DETECTED: {username}\n\n"
             "Welcome to MUD FORGE — the gateway between all dimensions.\n\n"
@@ -68,8 +67,8 @@ async def cmd_start(message: types.Message):
 @dp.message(Command("hub"))
 async def cmd_hub(message: types.Message):
     user_id = str(message.from_user.id)
-    await db.init()
-    player = await db.get_player(user_id)
+    await init_db()
+    player = await get_player(user_id)
 
     if not player:
         await message.answer("Use /start to initialize your Architect profile first.")
@@ -92,8 +91,8 @@ async def cmd_hub(message: types.Message):
 @dp.message(Command("find_egg"))
 async def cmd_find_egg(message: types.Message):
     user_id = str(message.from_user.id)
-    await db.init()
-    player = await db.get_player(user_id)
+    await init_db()
+    player = await get_player(user_id)
 
     if not player:
         await message.answer("Use /start to initialize your Architect profile first.")
@@ -106,7 +105,7 @@ async def cmd_find_egg(message: types.Message):
 
     if egg_found:
         egg_id = f"EGG_{user_id}_{int(random.random() * 99999)}"
-        await db.add_inventory_item(user_id, egg_id, "HYPERCUBE_NFT_EGG")
+        await add_nft_fragment(user_id, egg_id, "HYPERCUBE_NFT_EGG")
         await message.answer(
             "⚠️ ANOMALY DETECTED\n\n"
             "You have unearthed a dormant Hypercube NFT Egg!\n\n"
@@ -127,8 +126,8 @@ async def cmd_find_egg(message: types.Message):
 @dp.message(Command("inventory"))
 async def cmd_inventory(message: types.Message):
     user_id = str(message.from_user.id)
-    await db.init()
-    items = await db.get_inventory(user_id)
+    await init_db()
+    items = await get_nft_fragments(user_id)
 
     if not items:
         await message.answer(
@@ -186,8 +185,8 @@ async def handle_universe_select(callback: types.CallbackQuery):
 @dp.message(Command("balance"))
 async def cmd_balance(message: types.Message):
     user_id = str(message.from_user.id)
-    await db.init()
-    player = await db.get_player(user_id)
+    await init_db()
+    player = await get_player(user_id)
 
     if not player:
         await message.answer("Use /start to initialize your Architect profile first.")
@@ -209,15 +208,14 @@ async def cmd_balance(message: types.Message):
 @dp.message(Command("queen"))
 async def cmd_queen(message: types.Message):
     user_id = str(message.from_user.id)
-    await db.init()
-    player = await db.get_player(user_id)
+    await init_db()
+    player = await get_player(user_id)
 
     if not player:
         await message.answer("Use /start to initialize your Architect profile first.")
         return
 
-    queen_memory = QueenMemory(user_id)
-    state = queen_memory.load()
+    state = await get_queen_memory(user_id)
     pulse = state.get("pulse_count", 0)
     arc = state.get("emotional_arc", "Awakening")
 
@@ -233,7 +231,7 @@ async def cmd_queen(message: types.Message):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 async def main():
-    await db.init()
+    await init_db()
     print("[MUD FORGE] Gateway layer online. Weisone.")
     await dp.start_polling(bot)
 
