@@ -1,14 +1,24 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { createClient } from 'npm:@base44/sdk@0.8.31';
 
 const BOT_TOKEN = "8615061793:AAHFaa0bGvciFKjZoe5OxiHQOUHRSIvprYk";
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
+// Use service-role client — Telegram webhooks have no user session
+const base44 = createClient({
+  appId: Deno.env.get("BASE44_APP_ID") || "",
+  apiKey: Deno.env.get("BASE44_API_KEY") || "",
+});
+
 async function sendMessage(chat_id: number, text: string, extra: any = {}) {
-  await fetch(`${TELEGRAM_API}/sendMessage`, {
+  const res = await fetch(`${TELEGRAM_API}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id, text, parse_mode: "Markdown", ...extra })
   });
+  if (!res.ok) {
+    const err = await res.text();
+    console.error("sendMessage error:", err);
+  }
 }
 
 async function sendChatAction(chat_id: number) {
@@ -51,8 +61,10 @@ Return JSON only: { "response": "...", "insight": "...", "mood": "inspired|refle
       })
     });
     const data: any = await res.json();
+    console.log("Groq response:", JSON.stringify(data).slice(0, 300));
     return JSON.parse(data.choices[0].message.content);
-  } catch {
+  } catch (e) {
+    console.error("queenReflect error:", e);
     return { response: "She listens. She holds your words in the resonance field.", insight: "The truth you seek already lives within you.", mood: "reflective" };
   }
 }
@@ -74,15 +86,15 @@ const MOOD_EMOJI: Record<string, string> = {
 };
 
 Deno.serve(async (req: Request) => {
-  const base44 = createClientFromRequest(req);
+  console.log("Incoming:", req.method, req.url);
 
   // GET = register webhook
   if (req.method === "GET") {
-    const webhookUrl = req.url.split("?")[0];
+    const webhookUrl = "https://superagent-ec909dfa.base44.app/functions/ringMineBot";
     const res = await fetch(`${TELEGRAM_API}/setWebhook`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: webhookUrl, drop_pending_updates: true })
+      body: JSON.stringify({ url: webhookUrl, drop_pending_updates: true, allowed_updates: ["message","callback_query"] })
     });
     const data: any = await res.json();
     return new Response(JSON.stringify({ webhook_registered: data }), {
@@ -91,21 +103,29 @@ Deno.serve(async (req: Request) => {
   }
 
   let update: any;
-  try { update = await req.json(); }
-  catch { return new Response("ok"); }
+  try {
+    const body = await req.text();
+    console.log("Update body:", body.slice(0, 500));
+    update = JSON.parse(body);
+  } catch (e) {
+    console.error("Parse error:", e);
+    return new Response("ok");
+  }
 
   const message = update?.message;
   const callback = update?.callback_query;
 
-  // ── Callback queries ──────────────────────────────────────────────────
+  // ── Callbacks ─────────────────────────────────────────────────────────
   if (callback) {
     const chatId = callback.message.chat.id;
     const userId = callback.from.id;
     if (callback.data === "queen_speak") {
-      const players = await base44.entities.RingMinePlayer.filter({ telegram_id: userId });
-      if (players?.[0]) {
-        await base44.entities.RingMinePlayer.update(players[0].id, { state: "talking_to_queen" });
-      }
+      try {
+        const players = await base44.entities.RingMinePlayer.filter({ telegram_id: userId });
+        if (players?.[0]) {
+          await base44.entities.RingMinePlayer.update(players[0].id, { state: "talking_to_queen" });
+        }
+      } catch(e) { console.error("callback entity error:", e); }
       await sendMessage(chatId, "💬 *What would you like to say to your Queen?*\n\n_Speak freely._");
     }
     await fetch(`${TELEGRAM_API}/answerCallbackQuery`, {
@@ -124,14 +144,20 @@ Deno.serve(async (req: Request) => {
   const fullName: string = message.from.first_name || "Seeker";
   const text: string = message.text.trim();
 
-  // Fetch player
-  const players = await base44.entities.RingMinePlayer.filter({ telegram_id: userId });
-  let player = players?.[0] || null;
-  const state: string = player?.state || "new";
+  console.log(`User ${userId} (${fullName}): "${text}"`);
 
+  let player: any = null;
+  try {
+    const players = await base44.entities.RingMinePlayer.filter({ telegram_id: userId });
+    player = players?.[0] || null;
+  } catch(e) {
+    console.error("getPlayer error:", e);
+  }
+
+  const state: string = player?.state || "new";
   const menuTexts = ["📔 Journal","👑 My Queen","🎨 Create","🧩 Puzzles","📈 My Growth","💰 Muddcoin"];
 
-  // ── /start ───────────────────────────────────────────────────────────
+  // ── /start ────────────────────────────────────────────────────────────
   if (text === "/start") {
     if (player) {
       await base44.entities.RingMinePlayer.update(player.id, { state: "journaling" });
@@ -142,11 +168,17 @@ Deno.serve(async (req: Request) => {
       return new Response("ok");
     }
 
-    player = await base44.entities.RingMinePlayer.create({
-      telegram_id: userId, username, full_name: fullName,
-      queen_name: null, queen_bond: 0, growth_xp: 0,
-      mudd_balance: 0, streak_days: 0, state: "awaiting_queen_name"
-    });
+    try {
+      player = await base44.entities.RingMinePlayer.create({
+        telegram_id: userId, username, full_name: fullName,
+        queen_name: null, queen_bond: 0, growth_xp: 0,
+        mudd_balance: 0, streak_days: 0, state: "awaiting_queen_name"
+      });
+    } catch(e) {
+      console.error("createPlayer error:", e);
+      await sendMessage(chatId, "Something went wrong creating your profile. Please try /start again.");
+      return new Response("ok");
+    }
 
     await sendMessage(chatId, "🌀 *The Ring Mine.*\n\nNot all mines yield stone and metal.\nSome mines yield *truth*.\n\n_This one yields you._");
     await new Promise(r => setTimeout(r, 1500));
@@ -156,7 +188,7 @@ Deno.serve(async (req: Request) => {
     return new Response("ok");
   }
 
-  // ── /help ────────────────────────────────────────────────────────────
+  // ── /help ─────────────────────────────────────────────────────────────
   if (text === "/help") {
     await sendMessage(chatId,
       "🌀 *Ring Mine — Help*\n\n/start — Begin your journey\n/help — This message\n\n📔 *Journal* — Write freely, earn XP + MUDD\n👑 *My Queen* — Speak with her directly\n📈 *My Growth* — View your stats\n💰 *Muddcoin* — Your MUDD balance\n\n_Part of the Muddbro Network_",
@@ -165,7 +197,7 @@ Deno.serve(async (req: Request) => {
     return new Response("ok");
   }
 
-  // ── State: awaiting queen name ───────────────────────────────────────
+  // ── Awaiting queen name ───────────────────────────────────────────────
   if (state === "awaiting_queen_name") {
     await base44.entities.RingMinePlayer.update(player.id, { queen_name: text, state: "awaiting_intention" });
     await sendMessage(chatId,
@@ -174,7 +206,7 @@ Deno.serve(async (req: Request) => {
     return new Response("ok");
   }
 
-  // ── State: awaiting intention (first journal) ────────────────────────
+  // ── Awaiting intention (first journal) ───────────────────────────────
   if (state === "awaiting_intention") {
     await sendChatAction(chatId);
     const reflection = await queenReflect(player, text);
@@ -183,19 +215,19 @@ Deno.serve(async (req: Request) => {
       reflection: reflection.response, mood: reflection.mood,
       xp_earned: 25, mudd_earned: 2.5
     });
+    const updatedQueenName = player?.queen_name || "Your Queen";
     await base44.entities.RingMinePlayer.update(player.id, {
       queen_bond: 5, growth_xp: 25, mudd_balance: 2.5,
       state: "journaling", last_journal: new Date().toISOString()
     });
-    const queenName = player?.queen_name || text;
     await sendMessage(chatId,
-      `👑 *${queenName} speaks:*\n\n_${reflection.response}_\n\n💡 *"${reflection.insight}"*\n\n✨ +25 Growth XP  |  💰 +2.5 MUDD\n\nYou are now a *Seedling*. The journey has begun.`,
+      `👑 *${updatedQueenName} speaks:*\n\n_${reflection.response}_\n\n💡 *"${reflection.insight}"*\n\n✨ +25 Growth XP  |  💰 +2.5 MUDD\n\nYou are now a *Seedling*. The journey has begun.`,
       { reply_markup: mainMenu() }
     );
     return new Response("ok");
   }
 
-  // ── Menu: Journal ────────────────────────────────────────────────────
+  // ── Menu buttons ──────────────────────────────────────────────────────
   if (text === "📔 Journal") {
     if (player) await base44.entities.RingMinePlayer.update(player.id, { state: "journaling" });
     await sendMessage(chatId,
@@ -204,7 +236,6 @@ Deno.serve(async (req: Request) => {
     return new Response("ok");
   }
 
-  // ── Menu: My Queen ───────────────────────────────────────────────────
   if (text === "👑 My Queen") {
     const bond = player?.queen_bond || 0;
     const name = player?.queen_name || "Your Queen";
@@ -215,7 +246,6 @@ Deno.serve(async (req: Request) => {
     return new Response("ok");
   }
 
-  // ── Menu: My Growth ──────────────────────────────────────────────────
   if (text === "📈 My Growth") {
     await sendMessage(chatId,
       `📈 *Your Growth*\n\n✨ Growth XP: ${player?.growth_xp || 0}\n💰 MUDD Balance: ${player?.mudd_balance || 0}\n👑 Queen Bond: ${player?.queen_bond || 0}/100\n🔥 Streak: ${player?.streak_days || 0} days`,
@@ -224,7 +254,6 @@ Deno.serve(async (req: Request) => {
     return new Response("ok");
   }
 
-  // ── Menu: Muddcoin ───────────────────────────────────────────────────
   if (text === "💰 Muddcoin") {
     await sendMessage(chatId,
       `💰 *Muddcoin (MUDD)*\n\nYour balance: *${player?.mudd_balance || 0} MUDD*\n\nEarned through journaling, creative submissions, and challenges.\n\nContract: \`0QAG3lJZz24VOz6eicLTqP5M-YtfKJ96Naq3FPUz548Pcsw8\`\n_(TON Testnet)_`,
@@ -233,7 +262,7 @@ Deno.serve(async (req: Request) => {
     return new Response("ok");
   }
 
-  // ── Free text: journaling or talking to queen ────────────────────────
+  // ── Free journaling / talking to queen ────────────────────────────────
   if ((state === "journaling" || state === "talking_to_queen") && !text.startsWith("/") && !menuTexts.includes(text)) {
     await sendChatAction(chatId);
     const reflection = await queenReflect(player, text);
@@ -262,7 +291,7 @@ Deno.serve(async (req: Request) => {
     return new Response("ok");
   }
 
-  // Default fallback
+  // ── Default fallback ──────────────────────────────────────────────────
   if (player) {
     await sendMessage(chatId, "Use the menu below or type freely to speak with your Queen. 🌀", { reply_markup: mainMenu() });
   } else {
