@@ -20,7 +20,8 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 import database as db
 from queens_protocol import generate_quest, queen_speaks
-from mining import start_mining, collect_mining, create_miner
+from mining import start_mining, collect_mining
+from database import create_miner
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
