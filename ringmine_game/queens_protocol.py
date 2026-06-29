@@ -10,8 +10,8 @@ import random
 from openai import AsyncOpenAI
 
 client = AsyncOpenAI(
-    api_key=os.getenv("OPENAI_API_KEY", "local"),
-    base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+    api_key=os.getenv("GROQ_API_KEY") or os.getenv("OPENAI_API_KEY", "local"),
+    base_url=os.getenv("OPENAI_BASE_URL", "https://api.groq.com/openai/v1")
 )
 
 QUEEN_CORE = """
@@ -88,7 +88,7 @@ Reply ONLY in this JSON format:
 """
     try:
         r = await client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            model=os.getenv("OPENAI_MODEL", "llama-3.3-70b-versatile"),
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": prompt}
@@ -137,7 +137,7 @@ Reply ONLY in JSON:
 """
     try:
         r = await client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            model=os.getenv("OPENAI_MODEL", "llama-3.3-70b-versatile"),
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": prompt}
@@ -185,7 +185,7 @@ Reply ONLY in JSON:
 """
     try:
         r = await client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            model=os.getenv("OPENAI_MODEL", "llama-3.3-70b-versatile"),
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": prompt}
@@ -214,7 +214,7 @@ async def queen_speaks(player: dict, message: str, memory_context: str = "") -> 
     system = _build_system_prompt(player, memory_context)
     try:
         r = await client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            model=os.getenv("OPENAI_MODEL", "llama-3.3-70b-versatile"),
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": message}
@@ -246,7 +246,7 @@ Extract 2-4 anchors maximum. Be precise. Only what's truly present.
 """
     try:
         r = await client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            model=os.getenv("OPENAI_MODEL", "llama-3.3-70b-versatile"),
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
             max_tokens=200
@@ -285,7 +285,7 @@ Reply ONLY in JSON:
 """
     try:
         r = await client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            model=os.getenv("OPENAI_MODEL", "llama-3.3-70b-versatile"),
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": prompt}
@@ -332,7 +332,7 @@ Keep total response under 150 words.
 """
     try:
         r = await client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            model=os.getenv("OPENAI_MODEL", "llama-3.3-70b-versatile"),
             messages=[
                 {"role": "system", "content": system},
                 {"role": "user", "content": prompt}

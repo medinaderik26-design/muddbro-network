@@ -10,8 +10,8 @@ from openai import AsyncOpenAI
 # Supports local LLM (LM Studio / Ollama OpenAI-compatible endpoint)
 # Set OPENAI_BASE_URL to your local endpoint, or leave blank for OpenAI
 client = AsyncOpenAI(
-    api_key=os.getenv("OPENAI_API_KEY", "local"),
-    base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+    api_key=os.getenv("GROQ_API_KEY") or os.getenv("OPENAI_API_KEY", "local"),
+    base_url=os.getenv("OPENAI_BASE_URL", "https://api.groq.com/openai/v1")
 )
 
 SYSTEM_PROMPT = """
@@ -54,7 +54,7 @@ Generate a quest appropriate for this player's current stage.
 """
     try:
         response = await client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            model=os.getenv("OPENAI_MODEL", "llama-3.3-70b-versatile"),
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": context}
@@ -88,7 +88,7 @@ Queen Bond: {player.get('queen_bond',0)}/100 | LP Trust: {player.get('lp_trust',
 """
     try:
         response = await client.chat.completions.create(
-            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            model=os.getenv("OPENAI_MODEL", "llama-3.3-70b-versatile"),
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT.replace("generate quests", "respond to players")},
                 {"role": "user", "content": f"{context}\nPlayer says: {message}\n\nRespond as the Queen's Protocol in 2-3 sentences, mystical and wise."}
