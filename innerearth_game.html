@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Inner Earth: Rise of the Ancients</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root {
+    --gold:#c9a227; --gold-light:#f0c040; --dark:#0a0508;
+    --ore:#4dd0e1; --ore-glow:rgba(77,208,225,0.4);
+    --purple:#3d1a6e; --purple-light:#7b3fa0;
+  }
+  html,body { width:100%; height:100vh; background:var(--dark); color:#fff; font-family:'Georgia',serif; overflow:hidden; touch-action:manipulation; }
+
+  .screen { position:absolute; inset:0; display:none; flex-direction:column; }
+  .screen.active { display:flex; }
+
+  /* REALM BG */
+  .realm-bg { position:absolute; inset:0; background-size:cover; background-position:center; opacity:0.45; transition:all 0.8s; }
+
+  /* TOP BAR */
+  .topbar { display:flex; align-items:center; justify-content:space-between; padding:12px 16px 8px; background:linear-gradient(180deg,rgba(0,0,0,0.92) 0%,transparent 100%); z-index:10; position:relative; }
+  .topbar-stat { display:flex; flex-direction:column; align-items:center; }
+  .topbar-stat .label { font-size:9px; color:rgba(255,255,255,0.45); text-transform:uppercase; letter-spacing:1px; }
+  .topbar-stat .value { font-size:16px; font-weight:bold; color:var(--gold); }
+  .realm-badge { background:linear-gradient(135deg,var(--purple),#1a0a30); border:1px solid var(--gold); border-radius:20px; padding:5px 14px; font-size:11px; color:var(--gold-light); text-align:center; }
+
+  /* GAME SCREEN */
+  #screen-game { background:radial-gradient(ellipse at bottom,#1a0a30 0%,#07030f 70%,#000 100%); }
+
+  /* CHARACTER ZONE */
+  .char-zone { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; cursor:pointer; user-select:none; touch-action:manipulation; -webkit-tap-highlight-color:rgba(201,162,39,0.3); }
+  .char-ring { position:relative; width:210px; height:210px; }
+  .char-ring::before { content:''; position:absolute; inset:-12px; border-radius:50%; border:2px solid rgba(201,162,39,0.35); animation:pulse-ring 2.2s ease-in-out infinite; }
+  .char-ring::after { content:''; position:absolute; inset:-24px; border-radius:50%; border:1px solid rgba(77,208,225,0.2); animation:pulse-ring 2.2s ease-in-out infinite 0.6s; }
+  @keyframes pulse-ring { 0%,100%{transform:scale(1);opacity:0.5} 50%{transform:scale(1.06);opacity:1} }
+  .char-img { width:210px; height:210px; border-radius:50%; object-fit:cover; border:3px solid var(--gold); box-shadow:0 0 40px rgba(201,162,39,0.5),0 0 80px rgba(77,208,225,0.2); transition:transform 0.12s; -webkit-user-drag:none; }
+  .char-img.tapped { transform:scale(0.91); }
+  .char-name { margin-top:8px; font-size:13px; color:var(--gold); letter-spacing:2px; text-transform:uppercase; }
+  .tap-hint { margin-top:4px; font-size:10px; color:rgba(255,255,255,0.3); letter-spacing:3px; text-transform:uppercase; animation:blink 2.5s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:0.3} 50%{opacity:0.9} }
+
+  /* FLOATING ORE */
+  .ore-float { position:absolute; font-size:22px; font-weight:bold; color:var(--ore); text-shadow:0 0 12px var(--ore-glow); pointer-events:none; animation:floatUp 1.3s ease-out forwards; z-index:100; }
+  .spark { position:absolute; width:5px; height:5px; border-radius:50%; pointer-events:none; z-index:200; animation:sparkOut 0.5s ease-out forwards; }
+  @keyframes sparkOut { 0%{opacity:1;transform:translate(0,0) scale(1.2)} 100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0)} }
+  .dirt { position:absolute; width:7px; height:4px; border-radius:2px; background:#8B5E3C; pointer-events:none; z-index:199; animation:dirtFly 0.6s ease-out forwards; }
+  @keyframes dirtFly { 0%{opacity:1;transform:translate(0,0)} 80%{opacity:0.6} 100%{opacity:0;transform:translate(var(--dx),50px) scale(0.2)} }
+  @keyframes floatUp { 0%{opacity:1;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-90px) scale(1.4)} }
+
+  /* BARS */
+  .bars-section { padding:0 18px 6px; }
+  .bar-row { margin-bottom:7px; }
+  .bar-label { display:flex; justify-content:space-between; font-size:9px; color:rgba(255,255,255,0.45); margin-bottom:3px; text-transform:uppercase; letter-spacing:1px; }
+  .bar-track { height:5px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:3px; transition:width 0.4s; }
+  .bar-fill.mine { background:linear-gradient(90deg,var(--ore),#00e5ff); box-shadow:0 0 6px var(--ore-glow); }
+  .bar-fill.xp { background:linear-gradient(90deg,var(--purple-light),var(--gold)); }
+  .bar-fill.hp { background:linear-gradient(90deg,#880000,#ff4444); }
+
+  /* COMPANIONS */
+  .companion-strip { padding:5px 14px; display:flex; gap:7px; overflow-x:auto; scrollbar-width:none; }
+  .companion-strip::-webkit-scrollbar { display:none; }
+  .companion-chip { display:flex; align-items:center; gap:4px; background:rgba(255,255,255,0.06); border:1px solid rgba(201,162,39,0.25); border-radius:20px; padding:4px 11px; font-size:12px; white-space:nowrap; cursor:pointer; flex-shrink:0; transition:all 0.2s; }
+  .companion-chip.active { border-color:var(--gold); background:rgba(201,162,39,0.18); }
+
+  /* BOTTOM NAV */
+  .bottom-nav { display:flex; background:rgba(6,3,12,0.98); border-top:1px solid rgba(201,162,39,0.18); padding-bottom:env(safe-area-inset-bottom,0px); }
+  .nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px 2px 8px; cursor:pointer; border:none; background:none; color:rgba(255,255,255,0.35); font-size:9px; text-transform:uppercase; letter-spacing:0.5px; gap:3px; transition:color 0.2s; -webkit-tap-highlight-color:transparent; }
+  .nav-btn.active { color:var(--gold); }
+  .nav-btn .nav-icon { font-size:22px; line-height:1; }
+  .nav-btn:active { opacity:0.7; }
+
+  /* QUEST SCREEN */
+  #screen-quest { background:radial-gradient(ellipse at top,#2a0505 0%,#080215 50%,#000 100%); }
+  .quest-scroll { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:12px; }
+  .enemy-card { background:linear-gradient(135deg,rgba(50,5,5,0.85),rgba(15,5,25,0.85)); border:1px solid rgba(180,40,40,0.5); border-radius:18px; padding:16px; margin-bottom:12px; text-align:center; }
+  .enemy-img { width:150px; height:150px; border-radius:50%; object-fit:cover; margin:0 auto 12px; border:3px solid #cc2222; box-shadow:0 0 35px rgba(200,40,40,0.6); display:block; }
+  .enemy-name { font-size:22px; font-weight:bold; color:#ff6666; }
+  .enemy-tradition { font-size:10px; color:rgba(255,255,255,0.45); font-style:italic; margin:3px 0 8px; }
+  .enemy-lore { font-size:12px; color:rgba(255,255,255,0.7); line-height:1.6; margin-bottom:10px; font-style:italic; }
+  .weakness-tag { display:inline-block; background:rgba(255,200,0,0.12); border:1px solid rgba(255,200,0,0.35); border-radius:20px; padding:3px 12px; font-size:10px; color:var(--gold); margin-bottom:10px; }
+  .hp-row { display:flex; justify-content:space-between; font-size:10px; color:rgba(255,255,255,0.45); margin-bottom:4px; }
+  .combat-log { padding:8px 14px; font-size:12px; color:rgba(255,255,255,0.65); font-style:italic; text-align:center; min-height:42px; line-height:1.5; }
+  .combat-btns { display:grid; grid-template-columns:1fr 1fr; gap:9px; padding:0 14px 10px; }
+  .combat-btn { padding:14px 8px; border-radius:13px; border:none; font-size:13px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; font-family:'Georgia',serif; transition:transform 0.1s,opacity 0.1s; }
+  .combat-btn:active { transform:scale(0.93); opacity:0.8; }
+  .btn-strike { background:linear-gradient(135deg,#7a0000,#cc1111); color:#fff; }
+  .btn-magic { background:linear-gradient(135deg,#25006a,#6a30a0); color:#fff; }
+  .btn-speak { background:linear-gradient(135deg,#00503a,#009955); color:#fff; }
+  .btn-defend { background:linear-gradient(135deg,#383800,#777700); color:#fff; }
+  .btn-retreat { grid-column:span 2; background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.45); border:1px solid rgba(255,255,255,0.12); }
+
+  /* LP SCREEN */
+  #screen-lp { background:radial-gradient(ellipse at center,#071407 0%,#020a02 60%,#000 100%); }
+  .scrollable { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .section-title { padding:12px 16px 4px; font-size:10px; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:2px; }
+  .lp-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:8px 14px 16px; }
+  .lp-card { background:rgba(255,255,255,0.04); border:1px solid rgba(201,162,39,0.15); border-radius:14px; padding:14px; text-align:center; transition:all 0.2s; }
+  .lp-card.bonded { border-color:var(--gold); background:rgba(201,162,39,0.08); }
+  .lp-emoji { font-size:32px; margin-bottom:5px; }
+  .lp-name { font-size:13px; font-weight:bold; color:var(--gold); }
+  .lp-trad { font-size:9px; color:rgba(255,255,255,0.35); margin:2px 0 5px; }
+  .lp-bonus { font-size:11px; color:var(--ore); }
+  .lp-gift { font-size:9px; color:rgba(255,255,255,0.4); margin-top:5px; font-style:italic; }
+  .bond-btn { margin-top:8px; padding:6px 14px; background:var(--gold); color:#000; border:none; border-radius:20px; font-size:11px; font-weight:bold; cursor:pointer; font-family:'Georgia',serif; }
+  .bond-btn:disabled { background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.25); cursor:default; }
+
+  /* INVENTORY */
+  #screen-inventory { background:radial-gradient(ellipse at center,#080815 0%,#030308 60%,#000 100%); }
+  .inv-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; padding:8px 14px 16px; }
+  .inv-card { background:rgba(255,255,255,0.04); border:1px solid rgba(201,162,39,0.12); border-radius:13px; padding:12px; text-align:center; }
+  .inv-card.equipped { border-color:var(--gold); background:rgba(201,162,39,0.07); }
+  .inv-emoji { font-size:28px; margin-bottom:4px; }
+  .inv-name { font-size:11px; font-weight:bold; margin-bottom:3px; }
+  .inv-stats { font-size:10px; color:var(--ore); margin-bottom:4px; }
+  .inv-lore { font-size:9px; color:rgba(255,255,255,0.35); font-style:italic; margin-bottom:8px; }
+  .inv-btns { display:flex; gap:4px; justify-content:center; }
+  .inv-btn { padding:5px 9px; border-radius:10px; border:none; font-size:10px; cursor:pointer; font-family:'Georgia',serif; }
+  .inv-btn:active { transform:scale(0.92); }
+  .equip-btn { background:var(--gold); color:#000; font-weight:bold; }
+  .sell-btn { background:rgba(200,30,30,0.2); color:#ff7777; border:1px solid rgba(200,30,30,0.3); }
+
+  /* STATS */
+  #screen-stats { background:radial-gradient(ellipse at center,#080810 0%,#000 100%); }
+  .economy-card { margin:14px; background:linear-gradient(135deg,rgba(20,10,40,0.95),rgba(10,5,18,0.95)); border:1px solid var(--gold); border-radius:18px; padding:22px; text-align:center; }
+  .ore-big { font-size:38px; font-weight:bold; color:var(--gold); }
+  .ore-label { font-size:11px; color:rgba(255,255,255,0.4); margin-top:3px; }
+  .mudd-line { margin-top:10px; font-size:14px; color:var(--gold-light); }
+  .claim-btn { margin-top:14px; padding:13px 32px; background:linear-gradient(135deg,var(--gold),var(--gold-light)); color:#000; font-size:14px; font-weight:bold; border:none; border-radius:30px; cursor:pointer; font-family:'Georgia',serif; box-shadow:0 4px 20px rgba(201,162,39,0.5); }
+  .stat-row { display:flex; justify-content:space-between; align-items:center; padding:11px 16px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:10px; margin:0 14px 7px; }
+  .sl { font-size:12px; color:rgba(255,255,255,0.45); }
+  .sv { font-size:13px; font-weight:bold; color:var(--gold); }
+
+  /* OVERLAY */
+  .overlay { position:fixed; inset:0; z-index:500; background:rgba(0,0,0,0.9); display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:32px; }
+  .overlay.show { display:flex; }
+  .ov-emoji { font-size:68px; margin-bottom:14px; }
+  .ov-title { font-size:26px; font-weight:bold; color:var(--gold); margin-bottom:10px; }
+  .ov-body { font-size:14px; color:rgba(255,255,255,0.75); line-height:1.8; margin-bottom:26px; white-space:pre-line; }
+  .ov-btn { padding:14px 40px; background:linear-gradient(135deg,var(--gold),var(--gold-light)); color:#000; font-size:16px; font-weight:bold; border:none; border-radius:30px; cursor:pointer; font-family:'Georgia',serif; }
+
+  /* TOAST */
+  .toast { position:fixed; top:60px; left:50%; transform:translateX(-50%); background:rgba(15,8,30,0.97); border:1px solid var(--gold); border-radius:22px; padding:9px 22px; font-size:13px; color:var(--gold); z-index:400; white-space:nowrap; opacity:0; transition:opacity 0.3s; pointer-events:none; }
+  .toast.show { opacity:1; }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="overlay" id="overlay">
+  <div class="ov-emoji" id="ov-emoji">⚔️</div>
+  <div class="ov-title" id="ov-title"></div>
+  <div class="ov-body" id="ov-body"></div>
+  <button class="ov-btn" onclick="closeOverlay()">Continue</button>
+</div>
+
+<!-- ══ MINE SCREEN ══ -->
+<div class="screen active" id="screen-game">
+  <div class="realm-bg" id="realm-bg"></div>
+
+  <div class="topbar">
+    <div class="topbar-stat">
+      <span class="label">MuddOre</span>
+      <span class="value" id="ore-top">0</span>
+    </div>
+    <div class="realm-badge" id="realm-badge">🪨 Realm 1</div>
+    <div class="topbar-stat">
+      <span class="label">MUDD</span>
+      <span class="value" id="mudd-top">0</span>
+    </div>
+  </div>
+
+  <div class="char-zone" id="tap-zone">
+    <div class="char-ring">
+      <img class="char-img" id="char-img"
+        src="https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/43991e98d_generated_image.png"
+        alt="Ragaila" draggable="false">
+    </div>
+    <div class="char-name" id="char-name">Ragaila</div>
+    <div class="tap-hint">TAP TO MINE</div>
+  </div>
+
+  <div class="bars-section">
+    <div class="bar-row">
+      <div class="bar-label"><span>⛏️ Mining Power</span><span id="boost-val">+0%</span></div>
+      <div class="bar-track"><div class="bar-fill mine" id="mine-bar" style="width:5%"></div></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label"><span>✨ <span id="tier-label">Stone Seeker</span></span><span id="xp-val">0 XP</span></div>
+      <div class="bar-track"><div class="bar-fill xp" id="xp-bar" style="width:0%"></div></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label"><span>❤️ HP</span><span id="hp-val">100/100</span></div>
+      <div class="bar-track"><div class="bar-fill hp" id="hp-bar" style="width:100%"></div></div>
+    </div>
+  </div>
+
+  <div class="companion-strip" id="companion-strip"></div>
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active" onclick="nav('game')"><span class="nav-icon">🌍</span>Mine</button>
+    <button class="nav-btn" onclick="nav('quest')"><span class="nav-icon">⚔️</span>Quest</button>
+    <button class="nav-btn" onclick="nav('lp')"><span class="nav-icon">👥</span>People</button>
+    <button class="nav-btn" onclick="nav('inventory')"><span class="nav-icon">🎒</span>Gear</button>
+    <button class="nav-btn" onclick="nav('stats')"><span class="nav-icon">📊</span>Stats</button>
+  </nav>
+</div>
+
+<!-- ══ QUEST SCREEN ══ -->
+<div class="screen" id="screen-quest">
+  <div class="topbar">
+    <div class="topbar-stat"><span class="label">❤️ HP</span><span class="value" id="q-hp">100</span></div>
+    <div class="realm-badge" id="q-realm">⚔️ Quest</div>
+    <div class="topbar-stat"><span class="label">💫 Mana</span><span class="value" id="q-mana">60</span></div>
+  </div>
+  <div class="quest-scroll">
+    <div class="enemy-card">
+      <img class="enemy-img" id="e-img" src="https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/8562af20e_generated_image.png" alt="enemy">
+      <div class="enemy-name" id="e-name">Enemy</div>
+      <div class="enemy-tradition" id="e-trad">Tradition</div>
+      <div class="enemy-lore" id="e-lore">Lore</div>
+      <span class="weakness-tag" id="e-weak">Weakness</span>
+      <div class="hp-row"><span>Enemy HP</span><span id="e-hp-text">?/?</span></div>
+      <div class="bar-track"><div class="bar-fill hp" id="e-hp-bar" style="width:100%"></div></div>
+    </div>
+    <div class="combat-log" id="combat-log">Choose your action...</div>
+  </div>
+  <div class="combat-btns">
+    <button class="combat-btn btn-strike" onclick="combat('strike')">⚔️ Strike</button>
+    <button class="combat-btn btn-magic" onclick="combat('magic')">🔮 Magic</button>
+    <button class="combat-btn btn-speak" onclick="combat('speak')">💬 Speak</button>
+    <button class="combat-btn btn-defend" onclick="combat('defend')">🛡️ Defend</button>
+    <button class="combat-btn btn-retreat" onclick="combat('retreat')">🏃 Retreat</button>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-btn" onclick="nav('game')"><span class="nav-icon">🌍</span>Mine</button>
+    <button class="nav-btn active" onclick="nav('quest')"><span class="nav-icon">⚔️</span>Quest</button>
+    <button class="nav-btn" onclick="nav('lp')"><span class="nav-icon">👥</span>People</button>
+    <button class="nav-btn" onclick="nav('inventory')"><span class="nav-icon">🎒</span>Gear</button>
+    <button class="nav-btn" onclick="nav('stats')"><span class="nav-icon">📊</span>Stats</button>
+  </nav>
+</div>
+
+<!-- ══ LP SCREEN ══ -->
+<div class="screen" id="screen-lp">
+  <div class="section-title">👥 Little People — Bond & Mine</div>
+  <div class="scrollable">
+    <div class="lp-grid" id="lp-grid"></div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-btn" onclick="nav('game')"><span class="nav-icon">🌍</span>Mine</button>
+    <button class="nav-btn" onclick="nav('quest')"><span class="nav-icon">⚔️</span>Quest</button>
+    <button class="nav-btn active" onclick="nav('lp')"><span class="nav-icon">👥</span>People</button>
+    <button class="nav-btn" onclick="nav('inventory')"><span class="nav-icon">🎒</span>Gear</button>
+    <button class="nav-btn" onclick="nav('stats')"><span class="nav-icon">📊</span>Stats</button>
+  </nav>
+</div>
+
+<!-- ══ INVENTORY SCREEN ══ -->
+<div class="screen" id="screen-inventory">
+  <div class="section-title">🎒 Equipped Gear — <span id="inv-tier">Stone Seeker</span></div>
+  <div class="scrollable">
+    <div class="inv-grid" id="inv-grid"></div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-btn" onclick="nav('game')"><span class="nav-icon">🌍</span>Mine</button>
+    <button class="nav-btn" onclick="nav('quest')"><span class="nav-icon">⚔️</span>Quest</button>
+    <button class="nav-btn" onclick="nav('lp')"><span class="nav-icon">👥</span>People</button>
+    <button class="nav-btn active" onclick="nav('inventory')"><span class="nav-icon">🎒</span>Gear</button>
+    <button class="nav-btn" onclick="nav('stats')"><span class="nav-icon">📊</span>Stats</button>
+  </nav>
+</div>
+
+<!-- ══ STATS SCREEN ══ -->
+<div class="screen" id="screen-stats">
+  <div class="scrollable">
+    <div class="economy-card">
+      <div class="ore-big" id="s-ore">0</div>
+      <div class="ore-label">MuddOre in vault</div>
+      <div class="mudd-line">🪙 <span id="s-mudd">0</span> MUDD claimable</div>
+      <button class="claim-btn" onclick="claimMudd()">⚡ Claim MUDD</button>
+    </div>
+    <div id="stat-rows"></div>
+  </div>
+  <nav class="bottom-nav">
+    <button class="nav-btn" onclick="nav('game')"><span class="nav-icon">🌍</span>Mine</button>
+    <button class="nav-btn" onclick="nav('quest')"><span class="nav-icon">⚔️</span>Quest</button>
+    <button class="nav-btn" onclick="nav('lp')"><span class="nav-icon">👥</span>People</button>
+    <button class="nav-btn" onclick="nav('inventory')"><span class="nav-icon">🎒</span>Gear</button>
+    <button class="nav-btn active" onclick="nav('stats')"><span class="nav-icon">📊</span>Stats</button>
+  </nav>
+</div>
+
+<script>
+// ─── IMAGES ───────────────────────────────────────────────────────────────────
+const IMGS = {
+  ragaila_r1: "https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/43991e98d_generated_image.png",
+  vex:        "https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/451120e90_generated_image.png",
+  wendigo:    "https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/8562af20e_generated_image.png",
+  koschei:    "https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/d1bf6c0de_generated_image.png",
+  sacred_bg:  "https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/e15afb9a5_generated_image.png",
+  realm_bg:   "https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/4c2dc0395_generated_image.png",
+};
+
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+const REALMS = [
+  {id:1,name:"Ancient Earth",emoji:"🪨",xp_req:0,bg_color:"#1a0a30",img:IMGS.realm_bg},
+  {id:2,name:"Age of Warriors",emoji:"⚔️",xp_req:200,bg_color:"#2d0a0a",img:IMGS.realm_bg},
+  {id:3,name:"Mystic Age",emoji:"🔮",xp_req:500,bg_color:"#0a1a2d",img:IMGS.realm_bg},
+  {id:4,name:"Industrial Dawn",emoji:"⚙️",xp_req:1000,bg_color:"#1a1200",img:IMGS.realm_bg},
+  {id:5,name:"Digital Realm",emoji:"💻",xp_req:2000,bg_color:"#001a2d",img:IMGS.realm_bg},
+  {id:6,name:"Hyperverse",emoji:"🌌",xp_req:4000,bg_color:"#0a001a",img:IMGS.realm_bg},
+  {id:7,name:"Sacred Core",emoji:"👑",xp_req:8000,bg_color:"#1a1000",img:IMGS.sacred_bg},
+];
+
+const ENEMIES = {
+  1:[
+    {name:"Wendigo",emoji:"💀",trad:"Algonquin/Ojibwe",lore:"Born from starvation. Once human. Now hunger made flesh.",weak:"Fire magic",hp:60,atk:18,ore:80,xp:60,img:IMGS.wendigo},
+    {name:"Drekavac",emoji:"🌑",trad:"South Slavic",lore:"Its scream signals death. Hunts those who mine too deep.",weak:"Iron ore",hp:40,atk:22,ore:50,xp:40,img:IMGS.wendigo},
+    {name:"Pukwudgie",emoji:"👹",trad:"Wampanoag",lore:"Spine-covered trickster. Provoked — invisible arrows poison the soul.",weak:"Treat as equal",hp:35,atk:15,ore:40,xp:35,img:IMGS.wendigo},
+  ],
+  2:[
+    {name:"Volkodlak",emoji:"🐺",trad:"Slavic",lore:"A cursed human. The wolf and man war within.",weak:"Silver rune weapons",hp:75,atk:25,ore:100,xp:80,img:IMGS.wendigo},
+    {name:"Waldschrate",emoji:"🌲",trad:"Germanic",lore:"Forest shapeshifter. What you strike may not be where it stands.",weak:"Name its true form",hp:65,atk:20,ore:90,xp:70,img:IMGS.wendigo},
+    {name:"Psoglav",emoji:"🦴",trad:"Serbian",lore:"Dog-headed grave guardian. Answer its riddle or face iron legs.",weak:"Riddle answer",hp:55,atk:18,ore:70,xp:60,img:IMGS.wendigo},
+  ],
+  3:[
+    {name:"Mishipeshu",emoji:"🐆",trad:"Ojibwe",lore:"The Great Lynx. Controls storms. Demands copper tribute.",weak:"Offer copper ore",hp:110,atk:30,ore:150,xp:120,img:IMGS.wendigo},
+    {name:"Kikimora",emoji:"🕸️",trad:"Slavic",lore:"Bird-legged nightmare. Every thread she spins removes ore from your haul.",weak:"Break her wheel",hp:50,atk:16,ore:65,xp:55,img:IMGS.wendigo},
+    {name:"Koschei",emoji:"💎",trad:"Slavic",lore:"Deathless sorcerer. Soul hidden in a needle inside an egg.",weak:"Break the needle",hp:200,atk:40,ore:500,xp:300,img:IMGS.koschei,boss:true},
+  ],
+  4:[
+    {name:"Tatzelwurm",emoji:"🐉",trad:"Alpine Germanic",lore:"Armored cat-dragon. Its breath corrodes metal — and flesh.",weak:"Rune weapons",hp:130,atk:35,ore:180,xp:140,img:IMGS.wendigo},
+    {name:"Perchten",emoji:"🐐",trad:"Germanic",lore:"Twelve-horned punisher of the lazy. Tests your will to forge.",weak:"Show earned items",hp:95,atk:28,ore:130,xp:100,img:IMGS.wendigo},
+  ],
+  5:[
+    {name:"Zmey",emoji:"🐲",trad:"Slavic",lore:"Three-headed cyber dragon. Cut one head — another grows.",weak:"Triple magic",hp:250,atk:45,ore:600,xp:400,img:IMGS.wendigo,boss:true},
+    {name:"Strzyga",emoji:"🦇",trad:"Slavic/Polish",lore:"Born twice. Two hearts. Two souls. Kill both or she returns.",weak:"Two killing blows",hp:160,atk:38,ore:220,xp:180,img:IMGS.wendigo},
+  ],
+  6:[
+    {name:"Rusalka",emoji:"🌊",trad:"Slavic",lore:"Drowned maiden turned dark. Her song drowns the dishonest.",weak:"Speak your truth",hp:190,atk:42,ore:350,xp:280,img:IMGS.wendigo},
+  ],
+  7:[
+    {name:"Veles",emoji:"🌑",trad:"Slavic God",lore:"God of earth, magic, and underworld. He tests sovereign worth.",weak:"Master all 6 realms",hp:500,atk:60,ore:2000,xp:1000,img:IMGS.koschei,boss:true},
+  ],
+};
+
+const LP_LIST = [
+  {id:"keetoowah",name:"Keetoowah",emoji:"🌿",trad:"Cherokee",bonus:15,gift:"Reveals 3 hidden ore veins"},
+  {id:"nunnehi",name:"Nunnehi",emoji:"✨",trad:"Cherokee",bonus:10,gift:"Vision quest — reveals realm path"},
+  {id:"dverg",name:"Dverg",emoji:"⚒️",trad:"Norse",bonus:20,gift:"Rune-bind item +10% permanent"},
+  {id:"domovoi",name:"Domovoi",emoji:"🏠",trad:"Slavic",bonus:12,gift:"Opens Nav passage — hidden ore"},
+  {id:"kobold",name:"Kobold",emoji:"⛏️",trad:"Germanic",bonus:25,gift:"Triple mining yield 12hrs"},
+  {id:"leshy",name:"Leshy",emoji:"🌲",trad:"Slavic",bonus:10,gift:"Firebird encounter +50%"},
+  {id:"pukwudgie_ally",name:"Pukwudgie",emoji:"👹",trad:"Wampanoag",bonus:8,gift:"Reveals all enemy weaknesses"},
+  {id:"vodyanoy",name:"Vodyanoy",emoji:"💧",trad:"Slavic",bonus:18,gift:"Immune to Rusalka + water ore ×3"},
+];
+
+const GEAR = [
+  {id:"stone_pick",name:"Stone Pick",emoji:"⛏️",slot:"weapon",mine:15,def:0,lore:"First tool. First vein.",realm:1},
+  {id:"bone_helmet",name:"Bone Helmet",emoji:"💀",slot:"head",mine:10,def:5,lore:"Whispers of the hunt.",realm:1},
+  {id:"fur_cloak",name:"Bear Fur Cloak",emoji:"🐻",slot:"body",mine:8,def:8,lore:"Bear spirit lingers.",realm:1},
+  {id:"hide_boots",name:"Hide Boots",emoji:"👞",slot:"feet",mine:6,def:4,lore:"Mother Earth feels your feet.",realm:1},
+  {id:"bone_gloves",name:"Bone Gloves",emoji:"🦴",slot:"hands",mine:7,def:3,lore:"Grip of ancestors.",realm:1},
+  {id:"war_helm",name:"Warrior Helm",emoji:"⚔️",slot:"head",mine:15,def:12,lore:"Fear becomes power.",realm:2},
+  {id:"tribal_armor",name:"Tribal Armor",emoji:"🛡️",slot:"body",mine:12,def:18,lore:"Bone and ceremony.",realm:2},
+  {id:"rune_boots",name:"Rune Boots",emoji:"👢",slot:"feet",mine:20,def:10,lore:"Speed of Sleipnir.",realm:2},
+  {id:"crystal_helm",name:"Crystal Helm",emoji:"💎",slot:"head",mine:25,def:20,lore:"Amplifies the third eye.",realm:3},
+  {id:"enchanted_hammer",name:"Enchanted Hammer",emoji:"🔨",slot:"weapon",mine:35,def:5,lore:"Thunder in every strike.",realm:3},
+  {id:"mystic_robe",name:"Mystic Robe",emoji:"🧥",slot:"body",mine:20,def:25,lore:"Woven on the night of no moon.",realm:3},
+  {id:"forge_helm",name:"Forge Helm",emoji:"🔧",slot:"head",mine:30,def:28,lore:"Spirit sealed in metal.",realm:4},
+  {id:"cyber_exo",name:"Cyber Exo-Suit",emoji:"🤖",slot:"body",mine:50,def:40,lore:"Spirit meets silicon.",realm:5},
+  {id:"quantum_boots",name:"Quantum Boots",emoji:"⚡",slot:"feet",mine:45,def:30,lore:"Walk on data.",realm:5},
+  {id:"plasma_blade",name:"Plasma Blade",emoji:"🗡️",slot:"weapon",mine:55,def:10,lore:"Exists in two realms.",realm:5},
+  {id:"void_gauntlets",name:"Void Gauntlets",emoji:"🌑",slot:"hands",mine:40,def:35,lore:"Reach into shadows.",realm:6},
+  {id:"sacred_crown",name:"Sacred Crown",emoji:"👑",slot:"head",mine:70,def:60,lore:"The Great Mystery made solid.",realm:7},
+  {id:"queens_robe",name:"Queen's Robe",emoji:"✨",slot:"body",mine:65,def:55,lore:"The resonance knows your name.",realm:7},
+];
+
+const TIERS = [{xp:0,t:"Stone Seeker"},{xp:200,t:"Ragaila Warrior"},{xp:500,t:"Mystic Ragaila"},{xp:1000,t:"Forge Master"},{xp:2000,t:"Cyber Ragaila"},{xp:4000,t:"Hyperverse Walker"},{xp:8000,t:"Sacred Core — EVOLVED"}];
+
+const ANIMALS = {
+  vex:{n:"Vex",e:"🐺",img:IMGS.vex},
+  aura:{n:"Aura",e:"🦅",img:IMGS.ragaila_r1},
+  coil:{n:"Coil",e:"🐍",img:IMGS.ragaila_r1},
+  kron:{n:"Kron",e:"🦁",img:IMGS.ragaila_r1},
+  null_:{n:"Null",e:"🐙",img:IMGS.ragaila_r1},
+  pyar:{n:"Pyar",e:"🔥",img:IMGS.ragaila_r1},
+};
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let P = JSON.parse(localStorage.getItem("ie_v3")||"null") || {
+  xp:0, hp:100, mana:60, muddore:250, realm:1,
+  inventory:["stone_pick","bone_helmet","fur_cloak","hide_boots","bone_gloves"],
+  equipped:{weapon:"stone_pick",head:"bone_helmet",body:"fur_cloak",feet:"hide_boots",hands:"bone_gloves"},
+  pacts:{keetoowah:true},
+  animals:["vex"], companion:"vex",
+  quests:0, kills:0, last_passive:Date.now()
+};
+let CE=null, CE_HP=0;
+const save=()=>localStorage.setItem("ie_v3",JSON.stringify(P));
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function getMine(){let b=0;Object.values(P.equipped).forEach(id=>{const g=GEAR.find(e=>e.id===id);if(g)b+=g.mine});Object.keys(P.pacts).forEach(id=>{const lp=LP_LIST.find(l=>l.id===id);if(lp)b+=lp.bonus});return b;}
+function getDef(){let d=10;Object.values(P.equipped).forEach(id=>{const g=GEAR.find(e=>e.id===id);if(g)d+=g.def});return d;}
+function getTier(){let t=TIERS[0];for(const x of TIERS){if(P.xp>=x.xp)t=x;}return t;}
+function getRealm(){return REALMS.find(r=>r.id===P.realm)||REALMS[0];}
+function nextRealm(){return REALMS.find(r=>r.id===P.realm+1)||null;}
+function xpPct(){const n=nextRealm();return n?Math.min(100,(P.xp/n.xp_req)*100):100;}
+
+function checkRealm(){
+  const n=nextRealm();
+  if(n&&P.xp>=n.xp_req){P.realm=n.id;save();updateUI();
+    showOverlay(n.emoji,`${n.emoji} ${n.name} Unlocked!`,`You have ascended.\n\nNew enemies await.\nNew power is yours.`);
+    return true;}
+  return false;
+}
+
+// ─── PASSIVE MINING ───────────────────────────────────────────────────────────
+function passive(){
+  const elapsed=(Date.now()-P.last_passive)/3600000;
+  if(elapsed>0.083){
+    const hrs=Math.min(12,elapsed);
+    const ore=Math.floor(hrs*(10+P.realm*5)*(1+getMine()/100));
+    P.muddore+=ore; P.xp+=Math.floor(ore/8); P.last_passive=Date.now(); save();
+    if(ore>0)showToast(`⛏️ +${ore} MuddOre mined while away!`);
+  }
+}
+
+// ─── TAP MINING ───────────────────────────────────────────────────────────────
+const tapZone=document.getElementById("tap-zone");
+function spawnSpark(x, y){
+  const cols=['#4dd0e1','#c9a227','#f0c040','#ffffff','#7b3fa0'];
+  for(let i=0;i<9;i++){
+    const s=document.createElement('div'); s.className='spark';
+    const angle=(Math.PI*2/9)*i; const dist=25+Math.random()*45;
+    s.style.cssText=`left:${x}px;top:${y}px;background:${cols[i%cols.length]};--dx:${Math.cos(angle)*dist}px;--dy:${Math.sin(angle)*dist}px;`;
+    document.getElementById('tap-zone').appendChild(s);
+    setTimeout(()=>s.remove(),550);
+  }
+  for(let i=0;i<6;i++){
+    const d=document.createElement('div'); d.className='dirt';
+    d.style.cssText=`left:${x+Math.random()*50-25}px;top:${y+40}px;--dx:${(Math.random()-0.5)*70}px;`;
+    document.getElementById('tap-zone').appendChild(d);
+    setTimeout(()=>d.remove(),650);
+  }
+}
+function handleTap(e){
+  e.preventDefault(); e.stopPropagation();
+  const ore=1+Math.floor(getMine()/15);
+  P.muddore+=ore; P.xp+=1; save(); updateUI(); checkRealm();
+  const r=tapZone.getBoundingClientRect();
+  spawnFloat(e.clientX-r.left,e.clientY-r.top,`+${ore}`);
+  spawnSpark(e.clientX-r.left, e.clientY-r.top);
+  const img=document.getElementById("char-img");
+  img.classList.add("tapped"); setTimeout(()=>img.classList.remove("tapped"),110);
+}
+tapZone.addEventListener("touchstart", handleTap, {passive:false});
+tapZone.addEventListener("click", handleTap);
+
+function spawnFloat(x,y,txt){
+  const el=document.createElement("div");
+  el.className="ore-float"; el.textContent=txt;
+  el.style.left=(x-15)+"px"; el.style.top=(y-15)+"px";
+  tapZone.appendChild(el); setTimeout(()=>el.remove(),1300);
+}
+
+// ─── UPDATE UI ────────────────────────────────────────────────────────────────
+function updateUI(){
+  const realm=getRealm(), tier=getTier(), mine=getMine();
+  const mudd=Math.floor(P.muddore/1000);
+
+  // Top bar
+  document.getElementById("ore-top").textContent=P.muddore.toLocaleString();
+  document.getElementById("mudd-top").textContent=mudd;
+  document.getElementById("realm-badge").textContent=`${realm.emoji} ${realm.name}`;
+
+  // Character
+  document.getElementById("char-img").src=IMGS.ragaila_r1;
+  document.getElementById("char-name").textContent=tier.t;
+
+  // Bars
+  document.getElementById("boost-val").textContent=`+${mine}%`;
+  document.getElementById("mine-bar").style.width=Math.min(100,mine/2)+"%";
+  document.getElementById("tier-label").textContent=tier.t;
+  document.getElementById("xp-val").textContent=`${P.xp} XP`;
+  document.getElementById("xp-bar").style.width=xpPct()+"%";
+  document.getElementById("hp-val").textContent=`${P.hp}/100`;
+  document.getElementById("hp-bar").style.width=P.hp+"%";
+
+  // Realm bg
+  const bg=document.getElementById("realm-bg");
+  bg.style.backgroundImage=`url(${realm.img})`;
+  bg.style.background=`radial-gradient(ellipse at bottom, ${realm.bg_color} 0%, #000 100%)`;
+
+  // Companions
+  const strip=document.getElementById("companion-strip");
+  strip.innerHTML=P.animals.map(id=>{
+    const a=ANIMALS[id]||{n:id,e:"🐾"};
+    return `<div class="companion-chip${P.companion===id?" active":""}" onclick="setCompanion('${id}')">${a.e} ${a.n}</div>`;
+  }).join("");
+
+  // Stats screen
+  document.getElementById("s-ore").textContent=P.muddore.toLocaleString();
+  document.getElementById("s-mudd").textContent=mudd;
+  document.getElementById("stat-rows").innerHTML=[
+    ["❤️ HP",`${P.hp}/100`],["💫 Mana",`${P.mana}/60`],["✨ XP",P.xp],
+    ["🌍 Realm",`${P.realm}/7`],["⛏️ Mining",`+${mine}%`],["🛡️ Defense",getDef()],
+    ["⚔️ Quests",P.quests],["💀 Kills",P.kills],
+    ["🤝 LP Pacts",Object.keys(P.pacts).length+"/8"],
+    ["🐾 Companions",P.animals.length+"/8"],
+  ].map(([l,v])=>`<div class="stat-row"><span class="sl">${l}</span><span class="sv">${v}</span></div>`).join("");
+
+  // Inv tier
+  document.getElementById("inv-tier").textContent=tier.t;
+}
+
+function setCompanion(id){P.companion=id;save();updateUI();}
+
+// ─── LITTLE PEOPLE ────────────────────────────────────────────────────────────
+function renderLP(){
+  document.getElementById("lp-grid").innerHTML=LP_LIST.map(lp=>{
+    const bonded=!!P.pacts[lp.id];
+    return `<div class="lp-card${bonded?" bonded":""}">
+      <div class="lp-emoji">${lp.emoji}</div>
+      <div class="lp-name">${lp.name}</div>
+      <div class="lp-trad">${lp.trad}</div>
+      <div class="lp-bonus">+${lp.bonus}% mining</div>
+      <div class="lp-gift">${lp.gift}</div>
+      <button class="bond-btn" onclick="bondLP('${lp.id}')" ${bonded?"disabled":""}>
+        ${bonded?"✅ Bonded":"🤝 Bond"}
+      </button></div>`;
+  }).join("");
+}
+
+function bondLP(id){
+  const lp=LP_LIST.find(l=>l.id===id);
+  if(!lp||P.pacts[id])return;
+  P.pacts[id]=true; P.xp+=50; save(); renderLP(); updateUI();
+  showToast(`🤝 ${lp.emoji} ${lp.name} pact formed! +${lp.bonus}% mining`);
+}
+
+// ─── INVENTORY ────────────────────────────────────────────────────────────────
+function renderInv(){
+  const eqIds=Object.values(P.equipped);
+  document.getElementById("inv-grid").innerHTML=P.inventory.length===0
+    ? `<p style="grid-column:span 2;color:rgba(255,255,255,0.35);padding:20px;text-align:center">No items yet. Win quests to earn gear.</p>`
+    : P.inventory.map(id=>{
+        const g=GEAR.find(e=>e.id===id);if(!g)return"";
+        const eq=eqIds.includes(id);
+        return `<div class="inv-card${eq?" equipped":""}">
+          <div class="inv-emoji">${g.emoji}</div>
+          <div class="inv-name">${g.name}</div>
+          <div class="inv-stats">⛏️ +${g.mine}% | 🛡️ +${g.def}</div>
+          <div class="inv-lore">"${g.lore}"</div>
+          <div class="inv-btns">
+            ${eq
+              ? `<button class="inv-btn equip-btn" disabled>✅ On</button>`
+              : `<button class="inv-btn equip-btn" onclick="equipItem('${id}')">Equip</button>
+                 <button class="inv-btn sell-btn" onclick="sellItem('${id}')">Sell</button>`}
+          </div></div>`;
+      }).join("");
+}
+
+function equipItem(id){
+  const g=GEAR.find(e=>e.id===id);if(!g)return;
+  P.equipped[g.slot]=id; save(); renderInv(); updateUI();
+  showToast(`✅ ${g.emoji} ${g.name} equipped!`);
+}
+
+function sellItem(id){
+  const g=GEAR.find(e=>e.id===id);if(!g)return;
+  if(!confirm(`Sell ${g.name}? This permanently removes its power.`))return;
+  P.inventory=P.inventory.filter(i=>i!==id);
+  Object.keys(P.equipped).forEach(s=>{if(P.equipped[s]===id)delete P.equipped[s];});
+  const gain=g.mine*80; P.muddore+=gain; save(); renderInv(); updateUI();
+  showToast(`💸 Sold for +${gain} MuddOre`);
+}
+
+// ─── COMBAT ───────────────────────────────────────────────────────────────────
+function loadEnemy(){
+  const pool=ENEMIES[P.realm]||ENEMIES[1];
+  CE=pool[Math.floor(Math.random()*pool.length)];
+  CE_HP=CE.hp;
+  document.getElementById("e-img").src=CE.img;
+  document.getElementById("e-name").textContent=`${CE.emoji} ${CE.name}`;
+  document.getElementById("e-trad").textContent=CE.trad;
+  document.getElementById("e-lore").textContent=`"${CE.lore}"`;
+  document.getElementById("e-weak").textContent=`⚡ Weakness: ${CE.weak}`;
+  document.getElementById("e-hp-text").textContent=`${CE_HP}/${CE.hp}`;
+  document.getElementById("e-hp-bar").style.width="100%";
+  document.getElementById("combat-log").textContent=`${CE.emoji} ${CE.name} emerges from the dark...`;
+  document.getElementById("q-hp").textContent=P.hp;
+  document.getElementById("q-mana").textContent=P.mana;
+  const r=getRealm();
+  document.getElementById("q-realm").textContent=`${r.emoji} ${r.name}`;
+}
+
+function combat(action){
+  if(!CE)return;
+  let dmg=0, log="";
+
+  if(action==="retreat"){
+    P.xp=Math.max(0,P.xp-15); save(); updateUI();
+    showToast("🏃 Retreated. -15 XP"); loadEnemy(); return;
+  }
+  if(action==="defend"){
+    const blocked=Math.floor(getDef()*0.75);
+    document.getElementById("combat-log").textContent=`🛡️ Defended. Blocked ~${blocked} damage. ${CE.emoji} ${CE.name} snarls.`; return;
+  }
+  if(action==="speak"){
+    dmg=Math.floor(20+Math.random()*25);
+    log=`💬 Your words cut deep. ${CE.emoji} ${CE.name} recoils — -${dmg} HP`;
+  } else if(action==="magic"){
+    if(P.mana<20){showToast("💫 Not enough mana!");return;}
+    P.mana-=20; dmg=Math.floor(25+Math.random()*30);
+    log=`🔮 Magic surges! -${dmg} HP`;
+  } else {
+    dmg=Math.floor(12+getMine()/4+Math.random()*22);
+    log=`⚔️ Strike! -${dmg} HP`;
+  }
+
+  CE_HP=Math.max(0,CE_HP-dmg);
+  document.getElementById("e-hp-bar").style.width=(CE_HP/CE.hp*100)+"%";
+  document.getElementById("e-hp-text").textContent=`${CE_HP}/${CE.hp}`;
+
+  if(CE_HP<=0){
+    const xpGain=CE.xp+Math.floor(Math.random()*30);
+    const oreGain=CE.ore+Math.floor(Math.random()*50);
+    P.xp+=xpGain; P.muddore+=oreGain; P.kills++; P.quests++;
+    P.hp=Math.min(100,P.hp+10); P.mana=Math.min(60,P.mana+15);
+
+    // Random gear drop
+    const eligible=GEAR.filter(g=>g.realm<=P.realm&&!P.inventory.includes(g.id));
+    let dropText="";
+    if(eligible.length>0&&Math.random()>0.45){
+      const drop=eligible[Math.floor(Math.random()*eligible.length)];
+      P.inventory.push(drop.id); dropText=`\n\n🎁 Item drop: ${drop.emoji} ${drop.name}`;
+    }
+
+    // Companion unlock chance
+    let companionText="";
+    if(!P.animals.includes("aura")&&Math.random()>0.78&&P.realm>=2){P.animals.push("aura");companionText="\n\n🦅 Aura the Thunderbird has chosen you!";}
+    else if(!P.animals.includes("coil")&&Math.random()>0.82&&P.realm>=3){P.animals.push("coil");companionText="\n\n🐍 Coil the Serpent Elder emerges from the shadows.";}
+    else if(!P.animals.includes("kron")&&Math.random()>0.9&&P.realm>=4){P.animals.push("kron");companionText="\n\n🦁 Kron the Cyber Lion stands before you.";}
+
+    save(); updateUI(); checkRealm();
+    showOverlay("⚔️",`${CE.emoji} ${CE.name} Falls!`,`Victory!\n\n+${xpGain} XP\n+${oreGain} MuddOre${dropText}${companionText}`);
+    loadEnemy(); return;
+  }
+
+  // Enemy counter-attack
+  const eatk=Math.floor(CE.atk*(0.6+Math.random()*0.8));
+  const taken=Math.max(1,eatk-Math.floor(getDef()/4));
+  P.hp=Math.max(1,P.hp-taken);
+  log+=`\n${CE.emoji} Hits you for ${taken}. HP: ${P.hp}/100`;
+  document.getElementById("combat-log").textContent=log;
+  document.getElementById("q-hp").textContent=P.hp;
+  save();
+}
+
+// ─── ECONOMY ─────────────────────────────────────────────────────────────────
+function claimMudd(){
+  const c=Math.floor(P.muddore/1000);
+  if(c===0){showToast("⛏️ Need 1,000 MuddOre for 1 MUDD");return;}
+  showOverlay("🪙",`Claim ${c} MUDD`,`1,000 MuddOre = 1 MUDD Jetton\n\nTON Testnet:\n0QAG3lJZz24VOz6eic...\n\n⚠️ On-chain bridge coming soon.\nYour MUDD balance is secured here.`);
+}
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────────────
+function nav(name){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
+  document.getElementById("screen-"+name).classList.add("active");
+  document.querySelectorAll(`.nav-btn`).forEach(b=>{if(b.textContent.trim().toLowerCase().includes(name==="game"?"mine":name))b.classList.add("active");});
+  if(name==="quest")loadEnemy();
+  if(name==="lp")renderLP();
+  if(name==="inventory")renderInv();
+  updateUI();
+}
+
+// ─── OVERLAY / TOAST ─────────────────────────────────────────────────────────
+function showOverlay(emoji,title,body){
+  document.getElementById("ov-emoji").textContent=emoji;
+  document.getElementById("ov-title").textContent=title;
+  document.getElementById("ov-body").textContent=body;
+  document.getElementById("overlay").classList.add("show");
+}
+function closeOverlay(){document.getElementById("overlay").classList.remove("show");}
+function showToast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),2600);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+try{const tg=window.Telegram?.WebApp;if(tg){tg.expand();tg.setHeaderColor("#0a0508");}}catch(e){}
+passive(); updateUI(); renderLP(); renderInv(); loadEnemy();
+
+// Passive mining tick every 60s
+setInterval(()=>{
+  const elapsed=(Date.now()-P.last_passive)/60000;
+  if(elapsed>=1){
+    const ore=Math.floor(elapsed*(10+P.realm*5)/60*(1+getMine()/100));
+    if(ore>0){P.muddore+=ore;P.xp+=Math.floor(ore/10);P.last_passive=Date.now();save();updateUI();}
+  }
+},60000);
+</script>
+</body>
+</html>
