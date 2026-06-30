@@ -67,7 +67,7 @@
   .companion-chip.active { border-color:var(--gold); background:rgba(201,162,39,0.18); }
 
   /* BOTTOM NAV */
-  .bottom-nav { display:flex; background:rgba(6,3,12,0.98); border-top:1px solid rgba(201,162,39,0.18); padding-bottom:env(safe-area-inset-bottom,0px); }
+  .bottom-nav { display:flex; background:rgba(6,3,12,0.98); border-top:1px solid rgba(201,162,39,0.18); padding-bottom:env(safe-area-inset-bottom,0px); position:relative; z-index:99999; }
   .nav-btn { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px 2px 8px; cursor:pointer; border:none; background:none; color:rgba(255,255,255,0.35); font-size:9px; text-transform:uppercase; letter-spacing:0.5px; gap:3px; transition:color 0.2s; -webkit-tap-highlight-color:transparent; }
   .nav-btn.active { color:var(--gold); }
   .nav-btn .nav-icon { font-size:22px; line-height:1; }
@@ -697,7 +697,19 @@ function showToast(msg){
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
-try{const tg=window.Telegram?.WebApp;if(tg){tg.expand();tg.setHeaderColor("#0a0508");}}catch(e){}
+try{
+  const tg=window.Telegram?.WebApp;
+  if(tg){
+    tg.expand();
+    tg.setHeaderColor?.("#0a0508");
+    tg.setBackgroundColor?.("#0a0508");
+    tg.setBottomBarColor?.("#060310");
+    tg.disableVerticalSwipes?.();
+    if(tg.SecondaryButton) tg.SecondaryButton.hide();
+    if(tg.MainButton) tg.MainButton.hide();
+    tg.ready?.();
+  }
+}catch(e){}
 passive(); updateUI(); renderLP(); renderInv(); loadEnemy();
 
 // Passive mining tick every 60s
