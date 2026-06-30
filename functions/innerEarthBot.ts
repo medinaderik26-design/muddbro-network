@@ -471,13 +471,14 @@ function mainMenu() {
       [{ text: "⛏️ Mine" }, { text: "⚔️ Quest" }],
       [{ text: "🎒 Inventory" }, { text: "👥 Little People" }],
       [{ text: "🐾 Companions" }, { text: "🌍 Realm" }],
-      [{ text: "📊 Stats" }, { text: "💰 Economy" }]
+      [{ text: "📊 Stats" }, { text: "💰 Economy" }],
+      [{ text: "🎮 Play Visual Game" }]
     ],
     resize_keyboard: true
   };
 }
 
-const MENU_TEXTS = ["⛏️ Mine","⚔️ Quest","🎒 Inventory","👥 Little People","🐾 Companions","🌍 Realm","📊 Stats","💰 Economy","🏠 Menu"];
+const MENU_TEXTS = ["⛏️ Mine","⚔️ Quest","🎒 Inventory","👥 Little People","🐾 Companions","🌍 Realm","📊 Stats","💰 Economy","🏠 Menu","🎮 Play Visual Game"];
 
 // ── MAIN HANDLER ─────────────────────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
@@ -851,6 +852,19 @@ Deno.serve(async (req: Request) => {
     await sendMessage(chatId,
       `💰 *Inner Earth Economy*\n\n⛏️ *MuddOre:* ${ore}\n🪙 *Claimable MUDD:* ${claimable}\n\n_1,000 MuddOre = 1 MUDD Jetton_\n${claimable > 0 ? `\n✅ You can claim *${claimable} MUDD* on-chain\n_/claim — TON wallet bridge coming soon_` : "_Mine more to reach the 1,000 MuddOre threshold._"}\n\n*Item Trading:*\n⚠️ Selling items returns MuddOre but destroys the item's power.\n_The choice is always yours._\n\n*Companion Values:*\n🐺 Vex: 150 MUDD  |  🦅 Aura: 400 MUDD\n🐍 Coil: 350 MUDD  |  🦁 Kron: 800 MUDD\n🐙 Null: 3,000 MUDD  |  🔥 Pyar: 8,000 MUDD\n🐆 Mishipeshu: 1,200 MUDD\n\n*MUDD Contract (TON Testnet):*\n\`0QAG3lJZz24VOz6eicLTqP5M-YtfKJ96Naq3FPUz548Pcsw8\``,
       { reply_markup: mainMenu() });
+    return new Response("ok");
+  }
+
+  if (text === "🎮 Play Visual Game" || text === "/play") {
+    await sendMessage(chatId,
+      `🎮 *Inner Earth — Visual Mode*
+
+_Tap the button below to launch the full visual game — tap-to-mine, combat, inventory, all 7 realms._`,
+      { reply_markup: { inline_keyboard: [[{
+        text: "🌍 Launch Inner Earth",
+        web_app: { url: "https://superagent-ec909dfa.base44.app/functions/innerEarthApp" }
+      }]] }}
+    );
     return new Response("ok");
   }
 
