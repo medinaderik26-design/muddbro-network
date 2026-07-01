@@ -64,6 +64,8 @@ html,body{
   flex:1;justify-content:center;
   cursor:pointer;-webkit-user-select:none;user-select:none;
   position:relative;width:100%;
+  -webkit-touch-callout:none;
+  touch-action:manipulation;
 }
 .queen-glow{
   position:relative;width:210px;height:210px;
@@ -239,10 +241,11 @@ html,body{
   <!-- ══ MINE ══ -->
   <div class="screen on" id="s-mine">
     <div class="queen-wrap" id="queen-wrap">
-      <div class="queen-glow">
+      <div class="queen-glow" style="position:relative">
         <img class="queen-img" id="queen-img"
           src="https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/126f4319e_fea0adf3b_grok_image_1779681572238.jpg"
           alt="Queen">
+        <button id="tap-btn" style="position:absolute;inset:0;width:100%;height:100%;background:transparent;border:none;border-radius:50%;cursor:pointer;-webkit-appearance:none;z-index:50;touch-action:manipulation"></button>
       </div>
       <div class="queen-name" id="queen-name">THE QUEEN</div>
       <div class="queen-title">Muddbro Network</div>
@@ -511,6 +514,7 @@ function hud(){
 // ════════════════════════════════════════════
 var wrap = document.getElementById("queen-wrap");
 var qImg = document.getElementById("queen-img");
+var tapBtn = document.getElementById("tap-btn");
 
 function doTap(cx,cy){
   qImg.classList.add("tapped");
@@ -524,19 +528,33 @@ function doTap(cx,cy){
 
   if(G.realm<7 && G.xp>=XP_NEEDS[G.realm]){
     G.realm++; G.power+=2;
-    toast("🌟 REALM "+G.realm+" UNLOCKED!");
+    toast("\ud83c\udf1f REALM "+G.realm+" UNLOCKED!");
   }
 
   spawnFX(cx,cy,earned);
   persist(); hud();
 }
 
+// Primary: button onclick (most reliable in Telegram WebView)
+tapBtn.addEventListener("touchstart",function(e){
+  e.preventDefault();
+  var t=e.touches[0];
+  doTap(t.clientX,t.clientY);
+},{passive:false});
+tapBtn.addEventListener("click",function(e){
+  e.preventDefault();
+  doTap(e.clientX,e.clientY);
+});
+
+// Fallback on wrap
 wrap.addEventListener("touchstart",function(e){
   e.preventDefault();
   var t=e.touches[0];
   doTap(t.clientX,t.clientY);
 },{passive:false});
-wrap.addEventListener("click",function(e){ doTap(e.clientX,e.clientY); });
+wrap.addEventListener("click",function(e){
+  doTap(e.clientX,e.clientY);
+});
 
 function spawnFX(cx,cy,amt){
   var rect = wrap.getBoundingClientRect();
