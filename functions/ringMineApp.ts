@@ -27,11 +27,11 @@ html,body{width:100%;height:100dvh;background:var(--dark);color:#fff;font-family
 #s-mine{background:radial-gradient(ellipse at 50% 80%,#1a0535 0%,#06020f 65%,#000 100%);align-items:center;justify-content:space-between;padding:10px 0 6px}
 #mine-zone{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;position:relative}
 #tap-area{width:230px;height:230px;position:relative;display:flex;align-items:center;justify-content:center}
-#tap-area::before{content:'';position:absolute;inset:-14px;border-radius:50%;border:2px solid rgba(255,110,180,0.4);animation:glow 2.2s ease-in-out infinite}
-#tap-area::after{content:'';position:absolute;inset:-26px;border-radius:50%;border:1px solid rgba(201,162,39,0.2);animation:glow 2.2s ease-in-out infinite 0.6s}
+#tap-area::before{content:'';position:absolute;inset:-14px;border-radius:50%;border:2px solid rgba(255,110,180,0.4);animation:glow 2.2s ease-in-out infinite;pointer-events:none}
+#tap-area::after{content:'';position:absolute;inset:-26px;border-radius:50%;border:1px solid rgba(201,162,39,0.2);animation:glow 2.2s ease-in-out infinite 0.6s;pointer-events:none}
 @keyframes glow{0%,100%{transform:scale(1);opacity:0.4}50%{transform:scale(1.06);opacity:1}}
 #queen-img{width:210px;height:210px;border-radius:50%;object-fit:cover;object-position:top center;border:3px solid var(--pink);box-shadow:0 0 50px rgba(255,110,180,0.5),0 0 100px rgba(201,162,39,0.1);transition:transform 0.08s;display:block;pointer-events:none;position:relative;z-index:1}
-#tap-btn{position:absolute;inset:0;border-radius:50%;background:transparent;border:none;z-index:10;-webkit-appearance:none;cursor:pointer;touch-action:manipulation}
+#tap-btn{position:absolute;inset:0;border-radius:50%;background:transparent;border:none;z-index:999;-webkit-appearance:none;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .qname{margin-top:8px;font-size:11px;color:var(--pink);letter-spacing:3px;text-transform:uppercase}
 .qsub{font-size:8px;color:rgba(255,255,255,0.2);letter-spacing:2px;text-transform:uppercase;animation:blink 2.5s infinite;margin-top:3px}
 @keyframes blink{0%,100%{opacity:0.2}50%{opacity:0.7}}
@@ -348,6 +348,7 @@ function handleTouch(e){
   var t=e.changedTouches?e.changedTouches[0]:e;
   doTap(t.clientX,t.clientY);
 }
+tapBtn.addEventListener("touchstart",function(e){e.preventDefault();},{passive:false});
 tapBtn.addEventListener("touchend",handleTouch,{passive:false});
 tapBtn.addEventListener("click",function(e){ doTap(e.clientX,e.clientY); });
 
