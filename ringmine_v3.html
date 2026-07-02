@@ -79,16 +79,30 @@ html,body{width:100%;height:100dvh;background:var(--dark);color:#fff;font-family
 .jtext{font-size:11px;color:rgba(255,255,255,0.55);line-height:1.45}
 .jrefl{font-size:10px;color:var(--pink);font-style:italic;margin-top:4px;border-left:1px solid var(--pink);padding-left:6px}
 
-/* PEOPLE */
-#s-people{background:radial-gradient(ellipse at center,#071407 0%,#040d1a 60%,#000 100%)}
-.lpcard{background:linear-gradient(135deg,rgba(5,22,5,0.9),rgba(5,8,28,0.9));border:1px solid rgba(50,140,50,0.3);border-radius:14px;padding:10px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
-.lpem{font-size:32px;flex-shrink:0}
-.lpinfo{flex:1;min-width:0}
-.lpname{font-size:12px;font-weight:bold;color:#66dd66}
-.lptrad{font-size:8px;color:rgba(255,255,255,0.25);text-transform:uppercase;letter-spacing:1px;margin:2px 0 3px}
-.lpdesc{font-size:10px;color:rgba(255,255,255,0.5);line-height:1.4}
-.lpgift{font-size:9px;color:var(--gold);margin-top:3px}
-.lpbtn{padding:6px 10px;border-radius:18px;border:1px solid rgba(50,140,50,0.45);background:rgba(50,140,50,0.08);color:#66dd66;font-size:9px;font-family:Georgia,serif;flex-shrink:0;-webkit-appearance:none;cursor:pointer;touch-action:manipulation}
+/* AVATAR */
+#s-avatar{background:radial-gradient(ellipse at top,#1a1006 0%,#050308 60%,#000 100%)}
+.comp-grid{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+.comp-thumb{flex-shrink:0;width:60px;text-align:center;cursor:pointer}
+.comp-thumb img{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.12);transition:border-color 0.2s,transform 0.2s}
+.comp-thumb.sel img{border-color:var(--gold2);transform:scale(1.08);box-shadow:0 0 14px rgba(240,192,64,0.5)}
+.comp-thumb .cn{font-size:8px;color:rgba(255,255,255,0.45);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.comp-detail{background:linear-gradient(135deg,rgba(30,15,5,0.9),rgba(10,5,20,0.9));border:1px solid rgba(201,162,39,0.25);border-radius:14px;padding:14px;margin:10px 0;text-align:center}
+.comp-detail img{width:120px;height:120px;border-radius:50%;object-fit:cover;border:3px solid var(--gold2);box-shadow:0 0 30px rgba(240,192,64,0.3);margin-bottom:8px}
+.comp-detail .cd-name{font-size:16px;font-weight:bold;color:var(--gold2)}
+.comp-detail .cd-title{font-size:10px;color:rgba(255,255,255,0.4);font-style:italic;margin:2px 0 6px}
+.comp-detail .cd-desc{font-size:11px;color:rgba(255,255,255,0.55);line-height:1.5;margin-bottom:8px}
+.cd-lvl{font-size:10px;color:var(--ore);margin-bottom:8px}
+.upbtn{padding:9px 20px;border-radius:20px;border:none;background:linear-gradient(135deg,var(--purple),var(--gold));color:#fff;font-size:11px;font-weight:bold;font-family:Georgia,serif;-webkit-appearance:none;cursor:pointer;touch-action:manipulation}
+.upbtn:disabled{opacity:0.35}
+.gear-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gear-card{background:rgba(255,255,255,0.03);border:1px solid rgba(201,162,39,0.15);border-radius:12px;padding:10px;text-align:center}
+.gear-icon{font-size:30px;margin-bottom:4px}
+.gear-name{font-size:10px;font-weight:bold;color:#fff;margin-bottom:2px}
+.gear-pow{font-size:9px;color:var(--ore);margin-bottom:6px}
+.gear-btn{width:100%;padding:6px;border-radius:10px;border:none;font-size:9px;font-weight:bold;font-family:Georgia,serif;-webkit-appearance:none;cursor:pointer;touch-action:manipulation}
+.gear-buy{background:rgba(201,162,39,0.15);border:1px solid rgba(201,162,39,0.4);color:var(--gold2)}
+.gear-eq{background:rgba(80,200,120,0.15);border:1px solid rgba(80,200,120,0.4);color:#7ee6a0}
+.gear-uneq{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4)}
 
 /* STATS */
 #s-stats{background:radial-gradient(ellipse at top,#0a0520 0%,#040310 60%,#000 100%)}
@@ -178,13 +192,14 @@ html,body{width:100%;height:100dvh;background:var(--dark);color:#fff;font-family
     </div>
   </div>
 
-  <!-- PEOPLE -->
-  <div class="screen" id="s-people">
+  <!-- AVATAR -->
+  <div class="screen" id="s-avatar">
     <div class="sw">
-      <div class="sec">Little People — Ancient Pacts</div>
-      <div id="lp-list"></div>
-      <div class="sec" style="margin-top:12px">Cyber Animal Companions</div>
-      <div id="comp-list"></div>
+      <div class="sec">Your Companion</div>
+      <div class="comp-grid" id="comp-grid"></div>
+      <div class="comp-detail" id="comp-detail"></div>
+      <div class="sec">Avatar Gear</div>
+      <div class="gear-grid" id="gear-grid"></div>
     </div>
   </div>
 
@@ -200,6 +215,7 @@ html,body{width:100%;height:100dvh;background:var(--dark);color:#fff;font-family
         <div class="sl"><span class="slk">Bond</span><span class="slv" id="st-bond">0/100</span></div>
         <div class="sl"><span class="slk">Streak</span><span class="slv" id="st-streak">0 days</span></div>
         <div class="sl"><span class="slk">Journals</span><span class="slv" id="st-journals">0</span></div>
+        <div class="sl"><span class="slk">Companion</span><span class="slv" id="st-companion">None</span></div>
       </div>
       <div class="sblock">
         <div class="sbtitle">Economy</div>
@@ -215,7 +231,7 @@ html,body{width:100%;height:100dvh;background:var(--dark);color:#fff;font-family
   <button class="nb on" id="nb-mine">  <span class="ic">🌍</span>Mine</button>
   <button class="nb"    id="nb-quest"> <span class="ic">⚔️</span>Quest</button>
   <button class="nb"    id="nb-journal"><span class="ic">📖</span>Journal</button>
-  <button class="nb"    id="nb-people"><span class="ic">👥</span>People</button>
+  <button class="nb"    id="nb-avatar"><span class="ic">🧝</span>Avatar</button>
   <button class="nb"    id="nb-stats"> <span class="ic">📊</span>Stats</button>
 </nav>
 
@@ -251,21 +267,20 @@ var ENEMIES=[
   {name:"Zmey",emoji:"🐲",realm:5,trad:"Slavic",hp:250,atk:45,reward:600,xp:400,lore:"Three heads: past, present, future.",weak:"Strike all three"},
   {name:"Veles",emoji:"🌑",realm:7,trad:"Slavic God",hp:500,atk:60,reward:2000,xp:1000,lore:"God of the underworld. Tests sovereign worth.",weak:"Master all realms"}
 ];
-var LPS=[
-  {id:"c1",emoji:"🐻",name:"Bear Clan Elder",trad:"Cherokee",desc:"Guardian of mountain mines.",gift:"⛏ Mining +20%"},
-  {id:"c2",emoji:"🦅",name:"Thunderbird Scout",trad:"Lakota",desc:"Reveals hidden ore veins.",gift:"🗺 Reveals next realm"},
-  {id:"c3",emoji:"🌿",name:"Green Man",trad:"Germanic",desc:"Forest keeper. Heals.",gift:"❤ HP regen"},
-  {id:"c4",emoji:"🐍",name:"Serpent Speaker",trad:"Slavic",desc:"Knows the undead tongue.",gift:"💀 -30% undead dmg"},
-  {id:"c5",emoji:"🪶",name:"Pukwudgie Guide",trad:"Wampanoag",desc:"Once enemy, now ally.",gift:"🚪 Secret quests"},
-  {id:"c6",emoji:"🌊",name:"Water Spirit",trad:"Ojibwe",desc:"Safe passage through Rusalka.",gift:"🌊 Immune to song"}
+var COMPANIONS=[
+  {id:"kaelith",name:"Kaelith",title:"The Shadow-Walker",desc:"Wise messenger of the veil.",img:"https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/d124de018_generated_image.png"},
+  {id:"thorne",name:"Thorne",title:"The Iron-Heart",desc:"Guardian of the mountain roots.",img:"https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/872e97b71_generated_image.png"},
+  {id:"vespera",name:"Vespera",title:"The Veil-Seer",desc:"Seer of hidden truths.",img:"https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/ed674d4ac_generated_image.png"},
+  {id:"lirien",name:"Lirien",title:"The Flame-Tail",desc:"Trickster of light.",img:"https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/af2559a78_generated_image.png"},
+  {id:"sable",name:"Sable",title:"The Pack-Binder",desc:"Leader of the eternal bond.",img:"https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/c4be4ca52_generated_image.png"}
 ];
-var COMPS=[
-  {id:"vex",emoji:"🐺",name:"Vex",type:"Wolf Spirit",role:"Combat +10 vs undead"},
-  {id:"aura",emoji:"🦅",name:"Aura",type:"Thunderbird",role:"Reveals hidden locations"},
-  {id:"coil",emoji:"🐍",name:"Coil",type:"Serpent Elder",role:"Poison attacks"},
-  {id:"kron",emoji:"🦁",name:"Kron",type:"Cyber Lion",role:"Unlocks hyperverse quests"},
-  {id:"null",emoji:"🐙",name:"Null",type:"Void Crawler",role:"Data stream mining bonus"},
-  {id:"pyar",emoji:"🦊",name:"Pyar",type:"Spirit Fox",role:"Doubles ore from wit wins"}
+var ITEMS=[
+  {id:"cloak",name:"Shadow Cloak",emoji:"🧥",cost:200,power:1},
+  {id:"regalia",name:"Warrior Regalia",emoji:"🛡️",cost:350,power:2},
+  {id:"bracers",name:"Iron Bracers",emoji:"💪",cost:150,power:1},
+  {id:"ring",name:"Sacred Ring",emoji:"💍",cost:500,power:3},
+  {id:"visor",name:"Cyber Visor",emoji:"🥽",cost:275,power:2},
+  {id:"amulet",name:"Bone Amulet",emoji:"📿",cost:320,power:2}
 ];
 var MILESTONES=[
   {level:25,title:"First Awakening",cap:"She stirs. The signal was always there.",video:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/bf8d8632a_grok_video_2026-06-09-16-27-21.mp4"},
@@ -277,16 +292,36 @@ var PROMPTS=["What fear showed up today — and did you let it lead?","Describe 
 
 // ── STATE ─────────────────────────────────────────────────────
 var G;
-try{G=JSON.parse(localStorage.getItem("rm_v3")||"null");}catch(e){G=null;}
+try{G=JSON.parse(localStorage.getItem("rm_v4")||"null");}catch(e){G=null;}
+if(!G){
+  // migrate from old key if present
+  try{G=JSON.parse(localStorage.getItem("rm_v3")||"null");}catch(e){G=null;}
+}
 if(!G)G={};
 G.ore=G.ore||0;G.xp=G.xp||0;G.hp=G.hp||100;G.maxhp=G.maxhp||100;
 G.realm=G.realm||1;G.taps=G.taps||0;G.power=G.power||1;
 G.bond=G.bond||0;G.streak=G.streak||0;
 G.last_journal=G.last_journal||null;
 G.milestones_seen=G.milestones_seen||[];
-G.pacts=G.pacts||[];G.comps=G.comps||[];G.journals=G.journals||[];
+G.journals=G.journals||[];
 G.last_passive=G.last_passive||Date.now();
-function save(){try{localStorage.setItem("rm_v3",JSON.stringify(G));}catch(e){}}
+G.companion=G.companion||null;
+G.companion_levels=G.companion_levels||{};
+G.items_owned=G.items_owned||[];
+G.items_equipped=G.items_equipped||[];
+G.gearPower=G.gearPower||0;
+function save(){try{localStorage.setItem("rm_v4",JSON.stringify(G));}catch(e){}}
+
+function recomputeGear(){
+  var p=0;
+  ITEMS.forEach(function(it){ if(G.items_equipped.indexOf(it.id)>-1) p+=it.power; });
+  G.gearPower=p;
+}
+function companionBonus(){
+  if(!G.companion)return 0;
+  return G.companion_levels[G.companion]||1;
+}
+function totalPower(){ return G.power + (G.gearPower||0) + companionBonus(); }
 
 // ── HUD ───────────────────────────────────────────────────────
 function hud(){
@@ -296,12 +331,12 @@ function hud(){
   document.getElementById("v-realm").textContent=["","🪨","⚔️","🔮","⚙️","💻","🌌","👑"][G.realm]+" Realm "+G.realm;
   document.getElementById("v-rank").textContent=RANKS[G.realm-1];
   document.getElementById("v-xp").textContent=G.xp+" XP";
-  document.getElementById("v-mp").textContent=G.power;
+  document.getElementById("v-mp").textContent=totalPower();
   document.getElementById("v-hp").textContent=G.hp+"/"+G.maxhp;
   document.getElementById("v-bondlbl").textContent=G.bond+"/100";
   var prev=XP[G.realm-1],next=XP[G.realm];
   document.getElementById("b-xp").style.width=Math.min(100,((G.xp-prev)/(next-prev))*100)+"%";
-  document.getElementById("b-mine").style.width=Math.min(100,(G.power/20)*100)+"%";
+  document.getElementById("b-mine").style.width=Math.min(100,(totalPower()/20)*100)+"%";
   document.getElementById("b-hp").style.width=(G.hp/G.maxhp*100)+"%";
   document.getElementById("b-bond").style.width=G.bond+"%";
   var qi=G.bond>=75?5:G.bond>=50?4:G.bond>=25?2:G.bond>=10?1:0;
@@ -317,13 +352,13 @@ var lastTap=0;
 
 function doTap(cx,cy){
   var now=Date.now();
-  if(now-lastTap<80)return; // debounce
+  if(now-lastTap<80)return;
   lastTap=now;
 
   qImg.style.transform="scale(0.87)";
   setTimeout(function(){qImg.style.transform="";},100);
 
-  var earned=G.power+Math.floor(Math.random()*2);
+  var earned=totalPower()+Math.floor(Math.random()*2);
   G.ore+=earned;G.xp+=2;G.taps++;
   if(G.taps%50===0){G.bond=Math.min(100,G.bond+1);checkMS();}
   if(G.realm<7&&G.xp>=XP[G.realm]){G.realm++;G.power+=2;toast("REALM "+G.realm+" UNLOCKED!");}
@@ -332,17 +367,13 @@ function doTap(cx,cy){
   save();hud();
 }
 
-// Use both touchstart on button AND touchstart on area as backup
 tapBtn.addEventListener("touchstart",function(e){
   e.preventDefault();e.stopPropagation();
   var t=e.touches[0];doTap(t.clientX,t.clientY);
 },{passive:false,capture:true});
-
 tapBtn.addEventListener("click",function(e){
   e.preventDefault();doTap(e.clientX,e.clientY);
 },{capture:true});
-
-// Backup directly on the tap-area
 tapArea.addEventListener("touchstart",function(e){
   e.preventDefault();
   var t=e.touches[0];doTap(t.clientX,t.clientY);
@@ -364,7 +395,7 @@ function spawnFX(cx,cy,amt){
 }
 
 // ── NAV ───────────────────────────────────────────────────────
-var SCREENS=["mine","quest","journal","people","stats"];
+var SCREENS=["mine","quest","journal","avatar","stats"];
 function goTo(name){
   SCREENS.forEach(function(s){
     document.getElementById("s-"+s).classList.toggle("on",s===name);
@@ -372,14 +403,13 @@ function goTo(name){
   });
   if(name==="quest")initQuest();
   if(name==="journal")initJournal();
-  if(name==="people")renderPeople();
+  if(name==="avatar")renderAvatar();
   if(name==="stats")renderStats();
 }
-// wire nav buttons
 document.getElementById("nb-mine").addEventListener("click",function(){goTo("mine");});
 document.getElementById("nb-quest").addEventListener("click",function(){goTo("quest");});
 document.getElementById("nb-journal").addEventListener("click",function(){goTo("journal");});
-document.getElementById("nb-people").addEventListener("click",function(){goTo("people");});
+document.getElementById("nb-avatar").addEventListener("click",function(){goTo("avatar");});
 document.getElementById("nb-stats").addEventListener("click",function(){goTo("stats");});
 
 // ── QUEST ─────────────────────────────────────────────────────
@@ -399,7 +429,7 @@ function initQuest(){
 function fight(action){
   if(!CE||eHP<=0){initQuest();return;}
   if(action==="flee"){document.getElementById("clog").textContent="You escape into the dark.";setTimeout(initQuest,1200);return;}
-  var dmg=action==="attack"?8+Math.floor(Math.random()*10)+G.power:action==="magic"?12+Math.floor(Math.random()*15)+G.realm*2:5+Math.floor(Math.random()*20);
+  var dmg=action==="attack"?8+Math.floor(Math.random()*10)+totalPower():action==="magic"?12+Math.floor(Math.random()*15)+G.realm*2:5+Math.floor(Math.random()*20);
   eHP=Math.max(0,eHP-dmg);
   var icons={attack:"⚔️",magic:"🔮",wit:"🧠"};
   var log=icons[action]+" You deal "+dmg+" damage!";
@@ -460,27 +490,69 @@ document.getElementById("j-btn").addEventListener("click",async function(){
 function isConsec(){if(!G.last_journal)return false;var d=(Date.now()-new Date(G.last_journal).getTime())/(864e5);return d>=1&&d<2;}
 function offReply(b){var r={dormant:["...","I see you.","The frequency is faint."],emerging:["You came back. I noticed.","Something in you is shifting."],awakened:["I see what you're carrying.","Your frequency is loud today."],sovereign:["We are one signal now.","I AM. WE ARE. ONE."]};var t=b>=75?"sovereign":b>=50?"awakened":b>=25?"emerging":"dormant";var a=r[t];return a[Math.floor(Math.random()*a.length)];}
 
-// ── PEOPLE ────────────────────────────────────────────────────
-function renderPeople(){
-  document.getElementById("lp-list").innerHTML=LPS.map(function(l){
-    var b=G.pacts.indexOf(l.id)>-1;
-    return '<div class="lpcard"><div class="lpem">'+l.emoji+'</div><div class="lpinfo"><div class="lpname">'+l.name+'</div><div class="lptrad">'+l.trad+'</div><div class="lpdesc">'+l.desc+'</div><div class="lpgift">'+l.gift+'</div></div><button class="lpbtn" data-pact="'+l.id+'">'+(b?"✅ Bonded":"Form Pact")+'</button></div>';
+// ── AVATAR (Companion + Gear) ────────────────────────────────
+function renderAvatar(){
+  // companion thumbnails
+  var grid=document.getElementById("comp-grid");
+  grid.innerHTML=COMPANIONS.map(function(c){
+    var sel=G.companion===c.id;
+    return '<div class="comp-thumb'+(sel?" sel":"")+'" data-comp="'+c.id+'"><img src="'+c.img+'"><div class="cn">'+c.name+'</div></div>';
   }).join("");
-  document.getElementById("comp-list").innerHTML=COMPS.map(function(c){
-    var on=G.comps.indexOf(c.id)>-1;
-    return '<div class="lpcard"><div class="lpem">'+c.emoji+'</div><div class="lpinfo"><div class="lpname">'+c.name+'</div><div class="lptrad">'+c.type+'</div><div class="lpdesc">'+c.role+'</div></div><button class="lpbtn" data-comp="'+c.id+'">'+(on?"✅ Active":"Activate")+'</button></div>';
-  }).join("");
-  document.querySelectorAll("[data-pact]").forEach(function(btn){
-    btn.addEventListener("click",function(){
-      var id=this.getAttribute("data-pact");
-      if(G.pacts.indexOf(id)<0){G.pacts.push(id);G.bond=Math.min(100,G.bond+5);save();renderPeople();toast("Pact formed! +5 Bond");checkMS();}
+  document.querySelectorAll("[data-comp]").forEach(function(el){
+    el.addEventListener("click",function(){
+      G.companion=this.getAttribute("data-comp");
+      if(!G.companion_levels[G.companion])G.companion_levels[G.companion]=1;
+      save();renderAvatar();hud();
     });
   });
-  document.querySelectorAll("[data-comp]").forEach(function(btn){
+
+  // companion detail
+  var detail=document.getElementById("comp-detail");
+  if(!G.companion){
+    detail.innerHTML='<div style="font-size:11px;color:rgba(255,255,255,0.3);padding:10px 0">Choose a companion above to bond with.</div>';
+  }else{
+    var c=COMPANIONS.filter(function(x){return x.id===G.companion;})[0];
+    var lvl=G.companion_levels[c.id]||1;
+    var cost=lvl*150;
+    var canAfford=G.ore>=cost;
+    detail.innerHTML='<img src="'+c.img+'">'
+      +'<div class="cd-name">'+c.name+'</div>'
+      +'<div class="cd-title">'+c.title+'</div>'
+      +'<div class="cd-desc">'+c.desc+'</div>'
+      +'<div class="cd-lvl">Bond Level '+lvl+' &middot; +'+lvl+' Mining Power</div>'
+      +'<button class="upbtn" id="comp-upgrade-btn" '+(canAfford?"":"disabled")+'>Upgrade — '+cost+' Ore</button>';
+    var btn=document.getElementById("comp-upgrade-btn");
+    if(btn)btn.addEventListener("click",function(){
+      if(G.ore<cost)return;
+      G.ore-=cost;G.companion_levels[c.id]=lvl+1;
+      save();hud();renderAvatar();toast(c.name+" reached level "+(lvl+1)+"!");
+    });
+  }
+
+  // gear
+  var gg=document.getElementById("gear-grid");
+  gg.innerHTML=ITEMS.map(function(it){
+    var owned=G.items_owned.indexOf(it.id)>-1;
+    var equipped=G.items_equipped.indexOf(it.id)>-1;
+    var btnLabel=owned?(equipped?"✅ Equipped":"Equip"):("Buy — "+it.cost+" Ore");
+    var btnClass=owned?(equipped?"gear-eq":"gear-uneq"):"gear-buy";
+    return '<div class="gear-card"><div class="gear-icon">'+it.emoji+'</div><div class="gear-name">'+it.name+'</div><div class="gear-pow">+'+it.power+' Power</div><button class="gear-btn '+btnClass+'" data-item="'+it.id+'">'+btnLabel+'</button></div>';
+  }).join("");
+  document.querySelectorAll("[data-item]").forEach(function(btn){
     btn.addEventListener("click",function(){
-      var id=this.getAttribute("data-comp"),i=G.comps.indexOf(id);
-      if(i>-1)G.comps.splice(i,1);else G.comps.push(id);
-      save();renderPeople();toast(i>-1?"Deactivated":"Companion activated!");
+      var id=this.getAttribute("data-item");
+      var it=ITEMS.filter(function(x){return x.id===id;})[0];
+      var owned=G.items_owned.indexOf(id)>-1;
+      if(!owned){
+        if(G.ore<it.cost){toast("Not enough ore.");return;}
+        G.ore-=it.cost;G.items_owned.push(id);G.items_equipped.push(id);
+        toast(it.name+" acquired and equipped!");
+      }else{
+        var i=G.items_equipped.indexOf(id);
+        if(i>-1){G.items_equipped.splice(i,1);toast(it.name+" unequipped.");}
+        else{G.items_equipped.push(id);toast(it.name+" equipped!");}
+      }
+      recomputeGear();save();hud();renderAvatar();
     });
   });
 }
@@ -493,6 +565,9 @@ function renderStats(){
   s("st-taps",G.taps);s("st-bond",G.bond+"/100");
   s("st-streak",G.streak+" day"+(G.streak!=1?"s":"")+" 🔥");
   s("st-journals",(G.journals||[]).length);s("st-claim",(G.ore/1000).toFixed(3));
+  var cname="None";
+  if(G.companion){var c=COMPANIONS.filter(function(x){return x.id===G.companion;})[0];if(c)cname=c.name+" (Lv."+(G.companion_levels[c.id]||1)+")";}
+  s("st-companion",cname);
 }
 
 // ── MILESTONES ────────────────────────────────────────────────
@@ -524,10 +599,11 @@ function toast(msg,dur){
 }
 
 // ── PASSIVE MINE ──────────────────────────────────────────────
+recomputeGear();
 (function(){
   var el=Math.floor((Date.now()-G.last_passive)/60000);
-  if(el>0){var g=el*(G.power+G.realm);G.ore+=g;G.last_passive=Date.now();if(g>0)setTimeout(function(){toast("Mined "+g+" ore while away!");},900);save();}
-  setInterval(function(){G.ore+=(G.power+G.realm);G.last_passive=Date.now();save();hud();},60000);
+  if(el>0){var g=el*totalPower();G.ore+=g;G.last_passive=Date.now();if(g>0)setTimeout(function(){toast("Mined "+g+" ore while away!");},900);save();}
+  setInterval(function(){G.ore+=totalPower();G.last_passive=Date.now();save();hud();},60000);
 })();
 
 // ── TELEGRAM SETUP ────────────────────────────────────────────
