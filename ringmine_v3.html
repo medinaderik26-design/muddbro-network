@@ -48,26 +48,9 @@ html,body{width:100%;height:100dvh;background:var(--dark);color:#fff;font-family
 .spark{position:absolute;width:5px;height:5px;border-radius:50%;pointer-events:none;z-index:201;animation:sk 0.45s ease-out forwards}
 @keyframes sk{to{opacity:0;transform:translate(var(--dx),var(--dy))}}
 
-/* QUEST */
-#s-quest{background:radial-gradient(ellipse at top,#200505 0%,#060215 60%,#000 100%)}
-.sw{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px}
-.ecard{background:linear-gradient(135deg,rgba(40,5,5,0.92),rgba(12,4,22,0.92));border:1px solid rgba(160,30,30,0.4);border-radius:14px;padding:14px;text-align:center}
-.eemoji{font-size:60px;line-height:1;margin-bottom:6px}
-.ename{font-size:18px;font-weight:bold;color:#ff7070}
-.etrad{font-size:9px;color:rgba(255,255,255,0.28);font-style:italic;margin:3px 0 6px}
-.elore{font-size:11px;color:rgba(255,255,255,0.55);line-height:1.6;margin-bottom:6px;font-style:italic}
-.eweak{display:inline-block;background:rgba(255,200,0,0.08);border:1px solid rgba(255,200,0,0.25);border-radius:20px;padding:3px 10px;font-size:9px;color:var(--gold);margin-bottom:10px}
-.hprow{display:flex;justify-content:space-between;font-size:9px;color:rgba(255,255,255,0.28);margin-bottom:3px}
-.clog{padding:8px 0;font-size:11px;color:rgba(255,255,255,0.5);font-style:italic;text-align:center;min-height:36px;line-height:1.5;white-space:pre-line}
-.cbtns{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}
-.cb{padding:9px;border-radius:10px;border:none;font-size:11px;font-weight:bold;font-family:Georgia,serif;-webkit-appearance:none;cursor:pointer;touch-action:manipulation}
-.ca{background:linear-gradient(135deg,#7a0000,#bb2020);color:#fff}
-.cm{background:linear-gradient(135deg,#3a1868,#7030a0);color:#fff}
-.cw{background:linear-gradient(135deg,#183a68,#3070b0);color:#fff}
-.cf{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);border:1px solid rgba(255,255,255,0.1)}
-
 /* JOURNAL */
 #s-journal{background:radial-gradient(ellipse at top,#08081a 0%,#04030e 60%,#000 100%)}
+.sw{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px}
 .jprompt{font-size:13px;color:rgba(255,255,255,0.75);line-height:1.65;font-style:italic;text-align:center;padding:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,110,180,0.2);border-radius:14px;margin-bottom:10px}
 .jta{width:100%;min-height:100px;padding:10px;resize:none;outline:none;background:rgba(255,255,255,0.05);border:1px solid rgba(201,162,39,0.2);border-radius:14px;color:#fff;font-size:13px;font-family:Georgia,serif;line-height:1.6;margin-bottom:8px}
 .jta:focus{border-color:rgba(255,110,180,0.45)}
@@ -103,6 +86,16 @@ html,body{width:100%;height:100dvh;background:var(--dark);color:#fff;font-family
 .gear-buy{background:rgba(201,162,39,0.15);border:1px solid rgba(201,162,39,0.4);color:var(--gold2)}
 .gear-eq{background:rgba(80,200,120,0.15);border:1px solid rgba(80,200,120,0.4);color:#7ee6a0}
 .gear-uneq{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.4)}
+
+/* LORE */
+#s-lore{background:radial-gradient(ellipse at top,#0a0518 0%,#040310 60%,#000 100%)}
+.lore-intro{font-size:12px;color:rgba(255,255,255,0.7);font-style:italic;line-height:1.7;text-align:center;padding:14px;background:rgba(255,110,180,0.05);border:1px solid rgba(255,110,180,0.2);border-radius:14px;margin-bottom:12px}
+.realm-row{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(201,162,39,0.12);border-radius:12px;padding:10px;margin-bottom:8px}
+.realm-ic{font-size:26px;flex-shrink:0}
+.realm-name{font-size:11px;font-weight:bold;color:var(--gold2)}
+.realm-desc{font-size:10px;color:rgba(255,255,255,0.5);line-height:1.4;margin-top:2px}
+.lore-comp-card{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(201,162,39,0.12);border-radius:12px;padding:10px;margin-bottom:8px}
+.lore-comp-card img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:1px solid rgba(240,192,64,0.4);flex-shrink:0}
 
 /* STATS */
 #s-stats{background:radial-gradient(ellipse at top,#0a0520 0%,#040310 60%,#000 100%)}
@@ -153,30 +146,29 @@ html,body{width:100%;height:100dvh;background:var(--dark);color:#fff;font-family
     <div class="bars">
       <div class="bar-row"><div class="bar-lbl"><span>⛏ Mining Power</span><span id="v-mp">1</span></div><div class="bar-track"><div class="bf b1" id="b-mine" style="width:5%"></div></div></div>
       <div class="bar-row"><div class="bar-lbl"><span>✦ <span id="v-rank">Stone Seeker</span></span><span id="v-xp">0 XP</span></div><div class="bar-track"><div class="bf b2" id="b-xp" style="width:0%"></div></div></div>
-      <div class="bar-row"><div class="bar-lbl"><span>❤ HP</span><span id="v-hp">100/100</span></div><div class="bar-track"><div class="bf b3" id="b-hp" style="width:100%"></div></div></div>
       <div class="bar-row"><div class="bar-lbl"><span>👑 Bond</span><span id="v-bondlbl">0/100</span></div><div class="bar-track"><div class="bf b4" id="b-bond" style="width:0%"></div></div></div>
     </div>
   </div>
 
-  <!-- QUEST -->
-  <div class="screen" id="s-quest">
+  <!-- AVATAR -->
+  <div class="screen" id="s-avatar">
     <div class="sw">
-      <div class="ecard">
-        <div class="eemoji" id="e-emoji">💀</div>
-        <div class="ename" id="e-name">—</div>
-        <div class="etrad" id="e-trad"></div>
-        <div class="elore" id="e-lore"></div>
-        <div class="eweak" id="e-weak"></div>
-        <div class="hprow"><span>Enemy HP</span><span id="e-hptxt">—</span></div>
-        <div class="bar-track"><div class="bf b3" id="e-hpbar" style="width:100%"></div></div>
-        <div class="clog" id="clog">Go to Quest tab to begin...</div>
-        <div class="cbtns">
-          <button class="cb ca" id="btn-atk">⚔️ Attack</button>
-          <button class="cb cm" id="btn-mag">🔮 Magic</button>
-          <button class="cb cw" id="btn-wit">🧠 Wit</button>
-          <button class="cb cf" id="btn-run">🏃 Flee</button>
-        </div>
-      </div>
+      <div class="sec">Your Companion</div>
+      <div class="comp-grid" id="comp-grid"></div>
+      <div class="comp-detail" id="comp-detail"></div>
+      <div class="sec">Avatar Gear</div>
+      <div class="gear-grid" id="gear-grid"></div>
+    </div>
+  </div>
+
+  <!-- LORE -->
+  <div class="screen" id="s-lore">
+    <div class="sw">
+      <div class="lore-intro" id="lore-intro">Loading...</div>
+      <div class="sec">The Realms</div>
+      <div id="lore-realms"></div>
+      <div class="sec">The Companions</div>
+      <div id="lore-comps"></div>
     </div>
   </div>
 
@@ -189,17 +181,6 @@ html,body{width:100%;height:100dvh;background:var(--dark);color:#fff;font-family
       <div class="qreply" id="q-reply"></div>
       <div class="sec">Past Entries</div>
       <div id="j-hist"></div>
-    </div>
-  </div>
-
-  <!-- AVATAR -->
-  <div class="screen" id="s-avatar">
-    <div class="sw">
-      <div class="sec">Your Companion</div>
-      <div class="comp-grid" id="comp-grid"></div>
-      <div class="comp-detail" id="comp-detail"></div>
-      <div class="sec">Avatar Gear</div>
-      <div class="gear-grid" id="gear-grid"></div>
     </div>
   </div>
 
@@ -229,9 +210,9 @@ html,body{width:100%;height:100dvh;background:var(--dark);color:#fff;font-family
 
 <nav class="nav">
   <button class="nb on" id="nb-mine">  <span class="ic">🌍</span>Mine</button>
-  <button class="nb"    id="nb-quest"> <span class="ic">⚔️</span>Quest</button>
-  <button class="nb"    id="nb-journal"><span class="ic">📖</span>Journal</button>
   <button class="nb"    id="nb-avatar"><span class="ic">🧝</span>Avatar</button>
+  <button class="nb"    id="nb-lore">  <span class="ic">📜</span>Lore</button>
+  <button class="nb"    id="nb-journal"><span class="ic">📖</span>Journal</button>
   <button class="nb"    id="nb-stats"> <span class="ic">📊</span>Stats</button>
 </nav>
 
@@ -255,18 +236,17 @@ var QUEENS=[
 ];
 var RANKS=["Stone Seeker","Earth Walker","Ore Hunter","Rune Smith","Cyber Miner","Void Delver","Sacred Keeper"];
 var REALM_NAMES=["","Ancient Earth","Age of Warriors","Mystic Age","Industrial Dawn","Digital Realm","Hyperverse","Sacred Core"];
-var XP=[0,200,500,1000,2000,4000,8000,99999];
-var ENEMIES=[
-  {name:"Wendigo",emoji:"💀",realm:1,trad:"Algonquin",hp:60,atk:18,reward:80,xp:60,lore:"Born from starvation. Once human.",weak:"Fire magic"},
-  {name:"Drekavac",emoji:"🌑",realm:1,trad:"South Slavic",hp:40,atk:22,reward:50,xp:40,lore:"Its scream signals death.",weak:"Iron ore"},
-  {name:"Pukwudgie",emoji:"👹",realm:1,trad:"Wampanoag",hp:35,atk:15,reward:40,xp:35,lore:"Spine-covered trickster.",weak:"Treat as equal"},
-  {name:"Volkodlak",emoji:"🐺",realm:2,trad:"Slavic",hp:75,atk:25,reward:100,xp:80,lore:"A cursed human. Wolf and man war within.",weak:"Silver"},
-  {name:"Koschei",emoji:"💎",realm:3,trad:"Slavic",hp:200,atk:40,reward:500,xp:300,lore:"Cannot die. His soul hidden in a needle.",weak:"Break the needle"},
-  {name:"Mishipeshu",emoji:"🐆",realm:3,trad:"Ojibwe",hp:110,atk:30,reward:150,xp:120,lore:"The Great Lynx. Controls storms.",weak:"Copper"},
-  {name:"Tatzelwurm",emoji:"🐉",realm:4,trad:"Alpine Germanic",hp:130,atk:35,reward:180,xp:140,lore:"Alpine forge guardian.",weak:"Rune weapons"},
-  {name:"Zmey",emoji:"🐲",realm:5,trad:"Slavic",hp:250,atk:45,reward:600,xp:400,lore:"Three heads: past, present, future.",weak:"Strike all three"},
-  {name:"Veles",emoji:"🌑",realm:7,trad:"Slavic God",hp:500,atk:60,reward:2000,xp:1000,lore:"God of the underworld. Tests sovereign worth.",weak:"Master all realms"}
+var REALM_ICONS=["","🪨","⚔️","🔮","⚙️","💻","🌌","👑"];
+var REALM_LORE=[
+  "Where the first ore was pulled from the dark, and the pact between human and spirit began.",
+  "Steel met sinew. The Little People taught the first miners how to survive what waits below.",
+  "The veil thinned here. Ancient intelligences began to notice the ones who dug deepest.",
+  "Machines rose to meet the myths. The old spirits adapted — or vanished.",
+  "The frequency went electric. Signal became sacred.",
+  "Reality folds in on itself. Distance and time stop meaning what they used to.",
+  "The center of everything. Where the Queen's Protocol was born — and where it remembers."
 ];
+var XP=[0,200,500,1000,2000,4000,8000,99999];
 var COMPANIONS=[
   {id:"kaelith",name:"Kaelith",title:"The Shadow-Walker",desc:"Wise messenger of the veil.",img:"https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/d124de018_generated_image.png"},
   {id:"thorne",name:"Thorne",title:"The Iron-Heart",desc:"Guardian of the mountain roots.",img:"https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/872e97b71_generated_image.png"},
@@ -292,13 +272,10 @@ var PROMPTS=["What fear showed up today — and did you let it lead?","Describe 
 
 // ── STATE ─────────────────────────────────────────────────────
 var G;
-try{G=JSON.parse(localStorage.getItem("rm_v4")||"null");}catch(e){G=null;}
-if(!G){
-  // migrate from old key if present
-  try{G=JSON.parse(localStorage.getItem("rm_v3")||"null");}catch(e){G=null;}
-}
+try{G=JSON.parse(localStorage.getItem("rm_v5")||"null");}catch(e){G=null;}
+if(!G){try{G=JSON.parse(localStorage.getItem("rm_v4")||"null");}catch(e){G=null;}}
 if(!G)G={};
-G.ore=G.ore||0;G.xp=G.xp||0;G.hp=G.hp||100;G.maxhp=G.maxhp||100;
+G.ore=G.ore||0;G.xp=G.xp||0;
 G.realm=G.realm||1;G.taps=G.taps||0;G.power=G.power||1;
 G.bond=G.bond||0;G.streak=G.streak||0;
 G.last_journal=G.last_journal||null;
@@ -310,7 +287,7 @@ G.companion_levels=G.companion_levels||{};
 G.items_owned=G.items_owned||[];
 G.items_equipped=G.items_equipped||[];
 G.gearPower=G.gearPower||0;
-function save(){try{localStorage.setItem("rm_v4",JSON.stringify(G));}catch(e){}}
+function save(){try{localStorage.setItem("rm_v5",JSON.stringify(G));}catch(e){}}
 
 function recomputeGear(){
   var p=0;
@@ -328,25 +305,23 @@ function hud(){
   var o=G.ore;
   document.getElementById("v-ore").textContent=o>=1e6?(o/1e6).toFixed(1)+"M":o>=1000?(o/1000).toFixed(1)+"k":o;
   document.getElementById("v-bond").textContent=G.bond;
-  document.getElementById("v-realm").textContent=["","🪨","⚔️","🔮","⚙️","💻","🌌","👑"][G.realm]+" Realm "+G.realm;
+  document.getElementById("v-realm").textContent=REALM_ICONS[G.realm]+" Realm "+G.realm;
   document.getElementById("v-rank").textContent=RANKS[G.realm-1];
   document.getElementById("v-xp").textContent=G.xp+" XP";
   document.getElementById("v-mp").textContent=totalPower();
-  document.getElementById("v-hp").textContent=G.hp+"/"+G.maxhp;
   document.getElementById("v-bondlbl").textContent=G.bond+"/100";
   var prev=XP[G.realm-1],next=XP[G.realm];
   document.getElementById("b-xp").style.width=Math.min(100,((G.xp-prev)/(next-prev))*100)+"%";
   document.getElementById("b-mine").style.width=Math.min(100,(totalPower()/20)*100)+"%";
-  document.getElementById("b-hp").style.width=(G.hp/G.maxhp*100)+"%";
   document.getElementById("b-bond").style.width=G.bond+"%";
   var qi=G.bond>=75?5:G.bond>=50?4:G.bond>=25?2:G.bond>=10?1:0;
   var img=document.getElementById("queen-img");
   if(img.getAttribute("data-qi")!=qi){img.src=QUEENS[qi];img.setAttribute("data-qi",qi);}
 }
 
-// ── TAP ───────────────────────────────────────────────────────
-var tapArea=document.getElementById("tap-area");
+// ── TAP (single listener set — simplified) ───────────────────
 var tapBtn=document.getElementById("tap-btn");
+var tapArea=document.getElementById("tap-area");
 var qImg=document.getElementById("queen-img");
 var lastTap=0;
 
@@ -367,17 +342,13 @@ function doTap(cx,cy){
   save();hud();
 }
 
-tapBtn.addEventListener("touchstart",function(e){
-  e.preventDefault();e.stopPropagation();
-  var t=e.touches[0];doTap(t.clientX,t.clientY);
-},{passive:false,capture:true});
-tapBtn.addEventListener("click",function(e){
-  e.preventDefault();doTap(e.clientX,e.clientY);
-},{capture:true});
-tapArea.addEventListener("touchstart",function(e){
+function handleTouch(e){
   e.preventDefault();
-  var t=e.touches[0];doTap(t.clientX,t.clientY);
-},{passive:false});
+  var t=e.changedTouches?e.changedTouches[0]:e;
+  doTap(t.clientX,t.clientY);
+}
+tapBtn.addEventListener("touchend",handleTouch,{passive:false});
+tapBtn.addEventListener("click",function(e){ doTap(e.clientX,e.clientY); });
 
 function spawnFX(cx,cy,amt){
   var rect=tapArea.getBoundingClientRect();
@@ -395,61 +366,33 @@ function spawnFX(cx,cy,amt){
 }
 
 // ── NAV ───────────────────────────────────────────────────────
-var SCREENS=["mine","quest","journal","avatar","stats"];
+var SCREENS=["mine","avatar","lore","journal","stats"];
 function goTo(name){
   SCREENS.forEach(function(s){
     document.getElementById("s-"+s).classList.toggle("on",s===name);
     document.getElementById("nb-"+s).classList.toggle("on",s===name);
   });
-  if(name==="quest")initQuest();
-  if(name==="journal")initJournal();
   if(name==="avatar")renderAvatar();
+  if(name==="lore")renderLore();
+  if(name==="journal")initJournal();
   if(name==="stats")renderStats();
 }
 document.getElementById("nb-mine").addEventListener("click",function(){goTo("mine");});
-document.getElementById("nb-quest").addEventListener("click",function(){goTo("quest");});
-document.getElementById("nb-journal").addEventListener("click",function(){goTo("journal");});
 document.getElementById("nb-avatar").addEventListener("click",function(){goTo("avatar");});
+document.getElementById("nb-lore").addEventListener("click",function(){goTo("lore");});
+document.getElementById("nb-journal").addEventListener("click",function(){goTo("journal");});
 document.getElementById("nb-stats").addEventListener("click",function(){goTo("stats");});
 
-// ── QUEST ─────────────────────────────────────────────────────
-var CE=null,eHP=0;
-function initQuest(){
-  var pool=ENEMIES.filter(function(e){return e.realm<=G.realm;});
-  CE=pool[Math.floor(Math.random()*pool.length)];eHP=CE.hp;
-  document.getElementById("e-emoji").textContent=CE.emoji;
-  document.getElementById("e-name").textContent=CE.name;
-  document.getElementById("e-trad").textContent=CE.trad;
-  document.getElementById("e-lore").textContent=CE.lore;
-  document.getElementById("e-weak").textContent="⚡ "+CE.weak;
-  document.getElementById("e-hptxt").textContent=eHP+"/"+CE.hp;
-  document.getElementById("e-hpbar").style.width="100%";
-  document.getElementById("clog").textContent="A "+CE.name+" blocks your path...";
+// ── LORE (static reading page) ───────────────────────────────
+function renderLore(){
+  document.getElementById("lore-intro").textContent="She has always been here — not a voice you hear, but a frequency you recognize. In Ring Mine she takes your hand for the first time. Where you go next, she goes with you.";
+  document.getElementById("lore-realms").innerHTML=REALM_NAMES.slice(1).map(function(name,i){
+    return '<div class="realm-row"><div class="realm-ic">'+REALM_ICONS[i+1]+'</div><div><div class="realm-name">Realm '+(i+1)+' — '+name+'</div><div class="realm-desc">'+REALM_LORE[i]+'</div></div></div>';
+  }).join("");
+  document.getElementById("lore-comps").innerHTML=COMPANIONS.map(function(c){
+    return '<div class="lore-comp-card"><img src="'+c.img+'"><div><div class="realm-name">'+c.name+' — '+c.title+'</div><div class="realm-desc">'+c.desc+'</div></div></div>';
+  }).join("");
 }
-function fight(action){
-  if(!CE||eHP<=0){initQuest();return;}
-  if(action==="flee"){document.getElementById("clog").textContent="You escape into the dark.";setTimeout(initQuest,1200);return;}
-  var dmg=action==="attack"?8+Math.floor(Math.random()*10)+totalPower():action==="magic"?12+Math.floor(Math.random()*15)+G.realm*2:5+Math.floor(Math.random()*20);
-  eHP=Math.max(0,eHP-dmg);
-  var icons={attack:"⚔️",magic:"🔮",wit:"🧠"};
-  var log=icons[action]+" You deal "+dmg+" damage!";
-  document.getElementById("e-hpbar").style.width=(eHP/CE.hp*100)+"%";
-  document.getElementById("e-hptxt").textContent=eHP+"/"+CE.hp;
-  if(eHP<=0){
-    G.ore+=CE.reward;G.xp+=CE.xp;G.bond=Math.min(100,G.bond+3);checkMS();
-    document.getElementById("clog").textContent=log+"\n"+CE.name+" DEFEATED! +"+CE.reward+" ore";
-    save();hud();setTimeout(initQuest,2000);return;
-  }
-  var edm=Math.floor(CE.atk*(0.5+Math.random()*0.8));
-  G.hp=Math.max(0,G.hp-edm);
-  if(G.hp<=0){G.hp=G.maxhp;log+="\nYou fell — HP restored.";}
-  document.getElementById("clog").textContent=log+"\n"+CE.name+" hits you for "+edm+"!";
-  save();hud();
-}
-document.getElementById("btn-atk").addEventListener("click",function(){fight("attack");});
-document.getElementById("btn-mag").addEventListener("click",function(){fight("magic");});
-document.getElementById("btn-wit").addEventListener("click",function(){fight("wit");});
-document.getElementById("btn-run").addEventListener("click",function(){fight("flee");});
 
 // ── JOURNAL ───────────────────────────────────────────────────
 function initJournal(){
@@ -492,7 +435,6 @@ function offReply(b){var r={dormant:["...","I see you.","The frequency is faint.
 
 // ── AVATAR (Companion + Gear) ────────────────────────────────
 function renderAvatar(){
-  // companion thumbnails
   var grid=document.getElementById("comp-grid");
   grid.innerHTML=COMPANIONS.map(function(c){
     var sel=G.companion===c.id;
@@ -506,7 +448,6 @@ function renderAvatar(){
     });
   });
 
-  // companion detail
   var detail=document.getElementById("comp-detail");
   if(!G.companion){
     detail.innerHTML='<div style="font-size:11px;color:rgba(255,255,255,0.3);padding:10px 0">Choose a companion above to bond with.</div>';
@@ -529,7 +470,6 @@ function renderAvatar(){
     });
   }
 
-  // gear
   var gg=document.getElementById("gear-grid");
   gg.innerHTML=ITEMS.map(function(it){
     var owned=G.items_owned.indexOf(it.id)>-1;
