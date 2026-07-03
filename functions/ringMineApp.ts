@@ -95,6 +95,48 @@ body{background-image:radial-gradient(circle at 50% 50%,rgba(100,200,255,0.08) 0
 .gear-eq{background:rgba(160,240,255,0.08);border-color:rgba(160,240,255,0.4);color:var(--cyan)}
 .gear-uneq{background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.3)}
 
+/* CASINO */
+#s-games{background:radial-gradient(ellipse at top,#1a0a1a 0%,#0a0510 60%,#000 100%)}
+.gw{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px}
+.gtitle{font-size:14px;font-weight:bold;color:var(--gold);text-transform:uppercase;letter-spacing:2px;text-align:center;margin-bottom:4px}
+.gsub{font-size:9px;color:rgba(160,240,255,0.3);text-align:center;margin-bottom:14px}
+.game-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;cursor:pointer;transition:all 0.3s}
+.game-card:active{border-color:var(--gold);box-shadow:0 0 20px rgba(255,215,0,0.15)}
+.game-card-title{font-size:14px;font-weight:bold;color:var(--gold);margin-bottom:4px}
+.game-card-desc{font-size:10px;color:rgba(224,240,255,0.5);line-height:1.5}
+.game-card-soon{font-size:9px;color:rgba(160,240,255,0.2);text-transform:uppercase;letter-spacing:1px;margin-top:6px}
+/* ROULETTE */
+.rou-back{font-size:11px;color:rgba(160,240,255,0.4);margin-bottom:10px;cursor:pointer;padding:4px}
+.rou-balance{font-size:11px;color:var(--gold);text-align:center;margin-bottom:10px}
+.rou-balance span{font-size:16px;font-weight:bold}
+.rou-wheel-wrap{display:flex;justify-content:center;margin:10px 0 16px;position:relative}
+.rou-wheel{width:220px;height:220px;border-radius:50%;position:relative;border:3px solid var(--gold);box-shadow:0 0 30px rgba(255,215,0,0.15);transition:transform 4s cubic-bezier(0.17,0.67,0.12,0.99)}
+.rou-pointer{position:absolute;top:-8px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid var(--cyan);z-index:10;filter:drop-shadow(0 0 4px rgba(160,240,255,0.6))}
+.rou-seg{position:absolute;width:50%;height:50%;top:0;left:50%;transform-origin:0 100%;}
+.rou-seg-inner{display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;color:#fff;text-align:center;position:absolute;top:20px;left:50%;transform:translateX(-50%);white-space:nowrap;opacity:0.9}
+.rou-bet-area{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px}
+.rou-bet-label{font-size:9px;color:rgba(160,240,255,0.3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;text-align:center}
+.rou-tribes{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:10px}
+.rou-tribe{padding:6px 10px;border:1px solid var(--border);border-radius:10px;font-size:9px;font-weight:bold;font-family:'Courier New',monospace;cursor:pointer;transition:all 0.2s;-webkit-appearance:none;background:rgba(255,255,255,0.02);color:rgba(224,240,255,0.5);touch-action:manipulation}
+.rou-tribe.on{border-color:var(--gold);color:var(--gold);background:rgba(255,215,0,0.08);box-shadow:0 0 10px rgba(255,215,0,0.15)}
+.rou-tribe:active{transform:scale(0.95)}
+.rou-amount-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px}
+.rou-amt-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:rgba(255,255,255,0.03);color:var(--cyan);font-size:14px;font-weight:bold;cursor:pointer;-webkit-appearance:none;touch-action:manipulation}
+.rou-amt-btn:active{background:rgba(160,240,255,0.1)}
+.rou-amt-val{font-size:18px;font-weight:bold;color:var(--gold);min-width:60px;text-align:center}
+.rou-spin{width:100%;padding:12px;border:2px solid var(--gold);border-radius:12px;background:rgba(255,215,0,0.05);color:var(--gold);font-size:14px;font-weight:bold;font-family:'Courier New',monospace;letter-spacing:2px;text-transform:uppercase;-webkit-appearance:none;cursor:pointer;touch-action:manipulation;transition:all 0.3s}
+.rou-spin:active{background:rgba(255,215,0,0.15)}
+.rou-spin:disabled{opacity:0.3}
+.rou-result{text-align:center;margin-top:12px;padding:10px;border-radius:10px;font-size:12px;font-weight:bold;animation:fadeIn 0.3s}
+.rou-win{background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);color:var(--gold)}
+.rou-lose{background:rgba(255,50,50,0.08);border:1px solid rgba(255,50,50,0.2);color:rgba(255,100,100,0.8)}
+@keyframes fadeIn{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}
+.rou-history{margin-top:10px}
+.rou-hist-title{font-size:8px;color:rgba(160,240,255,0.2);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.rou-hist-item{display:flex;justify-content:space-between;font-size:9px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.03)}
+.rou-hist-w{color:var(--gold)}
+.rou-hist-l{color:rgba(255,100,100,0.5)}
+
 /* LORE */
 #s-lore{background:radial-gradient(ellipse at top,#0a0518 0%,#040310 60%,#000 100%)}
 .lore-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px}
@@ -218,6 +260,58 @@ body{background-image:radial-gradient(circle at 50% 50%,rgba(100,200,255,0.08) 0
     </div>
   </div>
 
+  <!-- GAMES / CASINO -->
+  <div id="s-games" class="screen">
+    <div id="games-list" class="gw">
+      <div class="gtitle">Ancient Wagers</div>
+      <div class="gsub">Games within the Mine · Spend MuddOre to play</div>
+      <div class="game-card" onclick="showRoulette()">
+        <div class="game-card-title">\u2727 Rune Roulette</div>
+        <div class="game-card-desc">Spin the wheel of the five mining tribes. Bet MuddOre on which rune the wheel lands on. Win 4x your bet on a correct call, 2x on an adjacent tribe.</div>
+      </div>
+      <div class="game-card">
+        <div class="game-card-title">\u{1F480} Bone-Singer's Dice</div>
+        <div class="game-card-desc">Roll the ancient bones. Necromancy-themed dice game where high rolls summon echoes for bonus rewards.</div>
+        <div class="game-card-soon">Coming Soon</div>
+      </div>
+      <div class="game-card">
+        <div class="game-card-title">\u{1F0CF} Hollow-Kin Blackjack</div>
+        <div class="game-card-desc">Shadow realm card game. Beat the Hollow King's hand without crossing the veil. Themed cards from the deep realms.</div>
+        <div class="game-card-soon">Coming Soon</div>
+      </div>
+      <div class="game-card">
+        <div class="game-card-title">\u{1F52E} Queen's Wager</div>
+        <div class="game-card-desc">High-stakes oracle prediction. The Queen whispers a prophecy — wager MuddOre on whether it comes to pass. Tied to Queen's Protocol.</div>
+        <div class="game-card-soon">Coming Soon</div>
+      </div>
+    </div>
+    <div id="roulette-screen" class="gw" style="display:none">
+      <div class="rou-back" onclick="hideRoulette()">\u2190 Back to Games</div>
+      <div class="gtitle">Rune Roulette</div>
+      <div class="rou-balance">MuddOre: <span id="rou-ore">0</span></div>
+      <div class="rou-wheel-wrap">
+        <div class="rou-pointer"></div>
+        <div class="rou-wheel" id="rou-wheel"></div>
+      </div>
+      <div class="rou-bet-area">
+        <div class="rou-bet-label">Choose a Tribe Rune</div>
+        <div class="rou-tribes" id="rou-tribes"></div>
+        <div class="rou-bet-label">Bet Amount</div>
+        <div class="rou-amount-row">
+          <button class="rou-amt-btn" onclick="changeBet(-10)">-</button>
+          <div class="rou-amt-val" id="rou-bet-val">10</div>
+          <button class="rou-amt-btn" onclick="changeBet(10)">+</button>
+        </div>
+        <button class="rou-spin" id="rou-spin-btn" onclick="spinRoulette()">Spin the Wheel</button>
+      </div>
+      <div id="rou-result"></div>
+      <div class="rou-history" id="rou-history" style="display:none">
+        <div class="rou-hist-title">Recent Spins</div>
+        <div id="rou-hist-list"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- STATS -->
   <div id="s-stats" class="screen">
     <div class="stats-scroll">
@@ -255,6 +349,7 @@ body{background-image:radial-gradient(circle at 50% 50%,rgba(100,200,255,0.08) 0
   <button class="nb" data-screen="avatar" onclick="nav('avatar')"><span class="ic">\u2696</span>Avatar</button>
   <button class="nb" data-screen="lore" onclick="nav('lore')"><span class="ic">\u2727</span>Lore</button>
   <button class="nb" data-screen="journal" onclick="nav('journal')"><span class="ic">\u270d</span>Journal</button>
+  <button class="nb" data-screen="games" onclick="nav('games')"><span class="ic">\u{1F3B0}</span>Games</button>
   <button class="nb" data-screen="stats" onclick="nav('stats')"><span class="ic">\u2666</span>Stats</button>
 </div>
 
@@ -294,12 +389,13 @@ var GEAR = [
 function nav(screen) {
   document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('on')});
   document.querySelectorAll('.nb').forEach(function(b){b.classList.remove('on')});
-  var map = {mine:'s-mine',avatar:'s-avatar',lore:'s-lore',journal:'s-journal',stats:'s-stats'};
+  var map = {mine:'s-mine',avatar:'s-avatar',lore:'s-lore',journal:'s-journal',games:'s-games',stats:'s-stats'};
   document.getElementById(map[screen]).classList.add('on');
   document.querySelector('[data-screen="'+screen+'"]').classList.add('on');
   if(screen==='avatar') renderAvatar();
   if(screen==='stats') renderStats();
   if(screen==='journal') renderJournal();
+  if(screen==='games') renderGames();
 }
 
 // === TAP TO MINE ===
@@ -552,6 +648,143 @@ function renderStats() {
     }
   }
   document.getElementById('st-gear').textContent = gearList.length ? gearList.join(', ') : 'Nothing equipped';
+}
+
+// === GAMES / ROULETTE ===
+var TRIBES = [
+  {id:0,name:"Hollow-Kin",color:"#6a0dad",short:"HK"},
+  {id:1,name:"Root-Weavers",color:"#2d8659",short:"RW"},
+  {id:2,name:"Glimmer-Children",color:"#d4a017",short:"GC"},
+  {id:3,name:"Storm-Kin",color:"#1a6fc4",short:"SK"},
+  {id:4,name:"Bone-Singers",color:"#8b4513",short:"BS"}
+];
+var rouBet = 10;
+var rouSelected = -1;
+var rouSpinning = false;
+var rouHistory = [];
+var rouRotation = 0;
+
+function renderGames() {
+  document.getElementById('rou-ore').textContent = S.ore;
+  if(!document.getElementById('rou-tribes').hasChildNodes()) {
+    var tc = document.getElementById('rou-tribes');
+    TRIBES.forEach(function(t) {
+      var btn = document.createElement('button');
+      btn.className = 'rou-tribe';
+      btn.textContent = t.name;
+      btn.onclick = function() { selectTribe(t.id); };
+      tc.appendChild(btn);
+    });
+    drawWheel();
+  }
+}
+
+function drawWheel() {
+  var wheel = document.getElementById('rou-wheel');
+  var segAngle = 360 / TRIBES.length;
+  var html = '';
+  TRIBES.forEach(function(t, i) {
+    var angle = i * segAngle;
+    html += '<div class="rou-seg" style="transform:rotate('+angle+'deg);background:'+t.color+';"></div>';
+    var labelAngle = angle + segAngle/2;
+    var rad = labelAngle * Math.PI / 180;
+    var lx = Math.cos(rad - Math.PI/2) * 55 + 110;
+    var ly = Math.sin(rad - Math.PI/2) * 55 + 110;
+    html += '<div style="position:absolute;left:'+lx+'px;top:'+ly+'px;transform:translate(-50%,-50%);font-size:8px;font-weight:bold;color:#fff;text-shadow:0 0 4px rgba(0,0,0,0.8);white-space:nowrap;">'+t.short+'</div>';
+  });
+  wheel.innerHTML = html;
+}
+
+function selectTribe(id) {
+  if(rouSpinning) return;
+  rouSelected = id;
+  var btns = document.querySelectorAll('.rou-tribe');
+  btns.forEach(function(b, i) { b.classList.toggle('on', i === id); });
+}
+
+function changeBet(delta) {
+  if(rouSpinning) return;
+  rouBet = Math.max(10, Math.min(rouBet + delta, S.ore));
+  document.getElementById('rou-bet-val').textContent = rouBet;
+}
+
+function showRoulette() {
+  document.getElementById('games-list').style.display = 'none';
+  document.getElementById('roulette-screen').style.display = 'block';
+  renderGames();
+}
+
+function hideRoulette() {
+  document.getElementById('games-list').style.display = 'block';
+  document.getElementById('roulette-screen').style.display = 'none';
+}
+
+function spinRoulette() {
+  if(rouSpinning || rouSelected < 0) return;
+  if(S.ore < rouBet) return;
+  rouSpinning = true;
+  S.ore -= rouBet;
+  document.getElementById('rou-ore').textContent = S.ore;
+  var btn = document.getElementById('rou-spin-btn');
+  btn.disabled = true;
+  btn.textContent = 'The wheel spins...';
+  document.getElementById('rou-result').innerHTML = '';
+
+  var segAngle = 360 / TRIBES.length;
+  var winning = Math.floor(Math.random() * TRIBES.length);
+  var targetAngle = 360 - (winning * segAngle) - (segAngle / 2);
+  rouRotation += 360 * 5 + targetAngle - (rouRotation % 360);
+  
+  var wheel = document.getElementById('rou-wheel');
+  wheel.style.transform = 'rotate(' + rouRotation + 'deg)';
+
+  setTimeout(function() {
+    var won = winning === rouSelected;
+    var adjacent = Math.abs(winning - rouSelected) === 1 || Math.abs(winning - rouSelected) === TRIBES.length - 1;
+    var payout = 0;
+    var msg = '';
+    
+    if(won) {
+      payout = rouBet * 4;
+      msg = '\u2727 ' + TRIBES[winning].name + ' wins! +' + payout + ' MuddOre';
+      S.ore += payout;
+    } else if(adjacent) {
+      payout = rouBet * 2;
+      msg = TRIBES[winning].name + ' landed. Adjacent match! +' + payout + ' MuddOre';
+      S.ore += payout;
+    } else {
+      msg = TRIBES[winning].name + ' landed. The runes were not with you.';
+    }
+    
+    S.mudd = Math.floor(S.ore / 1000);
+    var resDiv = document.getElementById('rou-result');
+    resDiv.className = 'rou-result ' + (payout > 0 ? 'rou-win' : 'rou-lose');
+    resDiv.innerHTML = msg;
+    
+    rouHistory.unshift({tribe: TRIBES[winning].name, won: payout > 0, payout: payout, bet: rouBet});
+    if(rouHistory.length > 8) rouHistory.pop();
+    renderRouHistory();
+    
+    document.getElementById('rou-ore').textContent = S.ore;
+    btn.disabled = false;
+    btn.textContent = 'Spin the Wheel';
+    rouSpinning = false;
+    save();
+    updateUI();
+  }, 4100);
+}
+
+function renderRouHistory() {
+  if(rouHistory.length === 0) return;
+  document.getElementById('rou-history').style.display = 'block';
+  var list = document.getElementById('rou-hist-list');
+  list.innerHTML = '';
+  rouHistory.forEach(function(h) {
+    var div = document.createElement('div');
+    div.className = 'rou-hist-item ' + (h.won ? 'rou-hist-w' : 'rou-hist-l');
+    div.innerHTML = '<span>'+h.tribe+'</span><span>'+(h.won ? '+'+h.payout : '-'+h.bet)+'</span>';
+    list.appendChild(div);
+  });
 }
 
 // === INIT ===
