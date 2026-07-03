@@ -1,8 +1,7 @@
 {
-  "type": "object",
   "properties": {
     "telegram_id": {
-      "type": "number"
+      "type": "string"
     },
     "username": {
       "type": "string"
@@ -29,12 +28,31 @@
       "type": "string"
     },
     "state_data": {
-      "type": "object"
+      "type": "string"
     },
     "last_journal": {
       "type": "string"
+    },
+    "ton_wallet_address": {
+      "type": "string"
+    },
+    "mudd_ore_balance": {
+      "type": "number"
+    },
+    "companion": {
+      "type": "string"
+    },
+    "companion_bond": {
+      "type": "number"
+    },
+    "total_withdrawn": {
+      "type": "number"
+    },
+    "withdrawal_history": {
+      "type": "string"
     }
   },
+  "type": "object",
   "required": [],
   "name": "RingMinePlayer"
 }
