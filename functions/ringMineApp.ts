@@ -137,6 +137,35 @@ body{background-image:radial-gradient(circle at 50% 50%,rgba(100,200,255,0.08) 0
 .rou-hist-w{color:var(--gold)}
 .rou-hist-l{color:rgba(255,100,100,0.5)}
 
+.rou-track{background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:8px}
+.rou-racer{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.rou-racer-img{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex-shrink:0}
+.rou-racer-info{flex:1;min-width:0}
+.rou-racer-name{font-size:9px;font-weight:bold;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rou-racer-track{height:8px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;margin-top:3px;position:relative}
+.rou-racer-fill{height:100%;border-radius:4px;transition:width 0.4s ease}
+.rou-racer-pos{font-size:9px;color:var(--gold);font-weight:bold;flex-shrink:0;width:24px;text-align:right}
+.rou-racer-player .rou-racer-name{color:var(--cyan)}
+.race-controls{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:12px;margin:10px 0}
+.race-card-display{display:flex;justify-content:center;gap:20px;margin:10px 0}
+.race-card{width:50px;height:70px;border-radius:6px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold;background:rgba(255,255,255,0.05)}
+.race-card.red{border-color:#ff4444;color:#ff4444}
+.race-card.black{border-color:#222;color:#ccc}
+.race-card.back{background:linear-gradient(135deg,#1a0a2e,#0a0a0f);border-color:var(--cyan);color:rgba(160,240,255,0.2);font-size:8px}
+.race-guess-btns{display:flex;gap:12px;justify-content:center;margin:8px 0}
+.race-guess{width:80px;padding:10px;border:2px solid;border-radius:12px;font-size:11px;font-weight:bold;font-family:'Courier New',monospace;-webkit-appearance:none;cursor:pointer;touch-action:manipulation;transition:all 0.3s}
+.race-guess.red{border-color:#ff4444;color:#ff4444;background:rgba(255,68,68,0.05)}
+.race-guess.red:active{background:rgba(255,68,68,0.15)}
+.race-guess.black{border-color:#aaa;color:#ccc;background:rgba(255,255,255,0.05)}
+.race-guess.black:active{background:rgba(255,255,255,0.1)}
+.race-guess:disabled{opacity:0.3}
+.race-msg{text-align:center;font-size:11px;color:var(--cyan);margin:8px 0;min-height:16px}
+.race-start{width:100%;padding:12px;border:2px solid var(--gold);border-radius:12px;background:rgba(255,215,0,0.05);color:var(--gold);font-size:14px;font-weight:bold;font-family:'Courier New',monospace;letter-spacing:2px;text-transform:uppercase;-webkit-appearance:none;cursor:pointer;touch-action:manipulation;transition:all 0.3s}
+.race-start:active{background:rgba(255,215,0,0.15)}
+.race-start:disabled{opacity:0.3}
+.race-pot{font-size:13px;color:var(--gold);font-weight:bold;text-align:center;margin:8px 0}
+.race-select-comp{font-size:10px;color:rgba(160,240,255,0.4);text-align:center;margin:8px 0}
+
 /* LORE */
 #s-lore{background:radial-gradient(ellipse at top,#0a0518 0%,#040310 60%,#000 100%)}
 .lore-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px}
@@ -312,6 +341,34 @@ body{background-image:radial-gradient(circle at 50% 50%,rgba(100,200,255,0.08) 0
     </div>
   </div>
 
+    <div id="racing-screen" class="gw" style="display:none">
+      <div class="rou-back" onclick="hideRacing()">\u2190 Back to Games</div>
+      <div class="gtitle">Companion Racing</div>
+      <div class="race-select-comp" id="race-comp-name">No companion selected</div>
+      <div class="rou-balance">MuddOre: <span id="race-ore">0</span></div>
+      <div id="race-track-area"></div>
+      <div class="race-controls" id="race-controls">
+        <div class="rou-bet-label">Entry Fee (Ante)</div>
+        <div class="rou-amount-row">
+          <button class="rou-amt-btn" onclick="changeRaceBet(-10)">-</button>
+          <div class="rou-amt-val" id="race-bet-val">50</div>
+          <button class="rou-amt-btn" onclick="changeRaceBet(10)">+</button>
+        </div>
+        <div class="race-pot" id="race-pot-display">Pot: 200 MuddOre</div>
+        <button class="race-start" id="race-start-btn" onclick="startRace()">Start Race</button>
+      </div>
+      <div id="race-game-area" style="display:none">
+        <div class="race-msg" id="race-msg">Guess the next card...</div>
+        <div class="race-card-display">
+          <div class="race-card back" id="race-card-shown">?</div>
+        </div>
+        <div class="race-guess-btns">
+          <button class="race-guess red" onclick="raceGuess('red')" id="race-btn-red">RED</button>
+          <button class="race-guess black" onclick="raceGuess('black')" id="race-btn-black">BLACK</button>
+        </div>
+      </div>
+      <div id="race-result"></div>
+    </div>
   <!-- STATS -->
   <div id="s-stats" class="screen">
     <div class="stats-scroll">
@@ -785,6 +842,162 @@ function renderRouHistory() {
     div.innerHTML = '<span>'+h.tribe+'</span><span>'+(h.won ? '+'+h.payout : '-'+h.bet)+'</span>';
     list.appendChild(div);
   });
+}
+
+// COMPANION RACING
+var raceBet=50,raceRacers=[],raceFinished=false,raceRound=0,raceSpinning=false,raceTrackLen=15;
+var RACE_COLORS=['#a0f0ff','#ff6eb4','#ffd700','#8b4513'];
+
+function showRacing(){
+  document.getElementById('games-list').style.display='none';
+  document.getElementById('racing-screen').style.display='block';
+  document.getElementById('race-ore').textContent=S.ore;
+  var compName='No companion selected';
+  if(S.companion){var c=COMPANIONS.find(function(x){return x.id===S.companion});if(c)compName='Racing: '+c.name+' (Bond '+S.bond+'%)';}
+  document.getElementById('race-comp-name').textContent=compName;
+  renderRaceTrack();
+  updateRacePot();
+}
+
+function hideRacing(){
+  document.getElementById('games-list').style.display='block';
+  document.getElementById('racing-screen').style.display='none';
+  resetRace();
+}
+
+function resetRace(){
+  raceRacers=[];raceFinished=false;raceRound=0;raceSpinning=false;
+  document.getElementById('race-game-area').style.display='none';
+  document.getElementById('race-controls').style.display='block';
+  document.getElementById('race-result').innerHTML='';
+  document.getElementById('race-msg').textContent='Guess the next card...';
+  document.getElementById('race-start-btn').textContent='Start Race';
+}
+
+function changeRaceBet(delta){
+  if(raceSpinning)return;
+  raceBet=Math.max(10,Math.min(raceBet+delta,S.ore));
+  document.getElementById('race-bet-val').textContent=raceBet;
+  updateRacePot();
+}
+
+function updateRacePot(){
+  document.getElementById('race-pot-display').textContent='Pot: '+(raceBet*4)+' MuddOre';
+}
+
+function startRace(){
+  if(S.ore<raceBet)return;
+  S.ore-=raceBet;document.getElementById('race-ore').textContent=S.ore;save();updateUI();
+  var playerComp=COMPANIONS.find(function(x){return x.id===S.companion})||COMPANIONS[0];
+  var ai1=COMPANIONS[Math.floor(Math.random()*5)];
+  var ai2=COMPANIONS[Math.floor(Math.random()*5)];
+  var ai3=COMPANIONS[Math.floor(Math.random()*5)];
+  raceRacers=[
+    {name:playerComp.name,img:playerComp.img,pos:0,isPlayer:true,bond:S.bond,eliminated:false},
+    {name:ai1.name,img:ai1.img,pos:0,isPlayer:false,bond:Math.floor(Math.random()*60),eliminated:false},
+    {name:ai2.name,img:ai2.img,pos:0,isPlayer:false,bond:Math.floor(Math.random()*60),eliminated:false},
+    {name:ai3.name,img:ai3.img,pos:0,isPlayer:false,bond:Math.floor(Math.random()*60),eliminated:false}
+  ];
+  raceFinished=false;raceRound=0;raceSpinning=false;
+  document.getElementById('race-controls').style.display='none';
+  document.getElementById('race-game-area').style.display='block';
+  renderRaceTrack();
+  document.getElementById('race-msg').textContent='Round 1 \u2014 Guess RED or BLACK for '+playerComp.name;
+}
+
+function renderRaceTrack(){
+  var area=document.getElementById('race-track-area');
+  if(!area)return;
+  if(raceRacers.length===0){area.innerHTML='';return;}
+  var html='';
+  raceRacers.forEach(function(r,i){
+    var pct=(r.pos/raceTrackLen)*100;
+    var cls=r.isPlayer?'rou-racer rou-racer-player':'rou-racer';
+    html+='<div class="'+cls+'">';
+    html+='<img class="rou-racer-img" src="'+r.img+'">';
+    html+='<div class="rou-racer-info"><div class="rou-racer-name">'+r.name+'</div>';
+    html+='<div class="rou-racer-track"><div class="rou-racer-fill" style="width:'+pct+'%;background:'+RACE_COLORS[i]+';"></div></div></div>';
+    html+='<div class="rou-racer-pos">'+r.pos+'/'+raceTrackLen+'</div>';
+    html+='</div>';
+  });
+  area.innerHTML=html;
+}
+
+function raceGuess(color){
+  if(raceSpinning||raceFinished)return;
+  raceSpinning=true;
+  document.getElementById('race-btn-red').disabled=true;
+  document.getElementById('race-btn-black').disabled=true;
+  var cardColor=Math.random()<0.5?'red':'black';
+  var cardSymbol=cardColor==='red'?'\u2665':'\u2663';
+  var cardEl=document.getElementById('race-card-shown');
+  cardEl.className='race-card '+cardColor;
+  cardEl.textContent=cardSymbol;
+  document.getElementById('race-msg').textContent=cardColor==='red'?'Red '+cardSymbol+' revealed':'Black '+cardSymbol+' revealed';
+  
+  var player=raceRacers.find(function(r){return r.isPlayer});
+  var playerCorrect=cardColor===color;
+  var bondBonus=(player.bond/100)*0.15;
+  if(playerCorrect||Math.random()<bondBonus){
+    player.pos++;
+  }
+  
+  raceRacers.forEach(function(r){
+    if(r.isPlayer)return;
+    var aiGuess=Math.random()<0.5?'red':'black';
+    var aiCorrect=cardColor===aiGuess;
+    var aiBondBonus=(r.bond/100)*0.10;
+    if(aiCorrect||Math.random()<aiBondBonus){
+      r.pos++;
+    }
+  });
+  
+  raceRound++;
+  renderRaceTrack();
+  
+  var winner=raceRacers.find(function(r){return r.pos>=raceTrackLen});
+  if(winner){
+    raceFinished=true;
+    setTimeout(function(){finishRace(winner);},800);
+    return;
+  }
+  
+  setTimeout(function(){
+    raceSpinning=false;
+    cardEl.className='race-card back';
+    cardEl.textContent='?';
+    document.getElementById('race-btn-red').disabled=false;
+    document.getElementById('race-btn-black').disabled=false;
+    document.getElementById('race-msg').textContent='Round '+(raceRound+1)+' \u2014 Guess RED or BLACK';
+  },1200);
+}
+
+function finishRace(winner){
+  var won=winner.isPlayer;
+  var payout=raceBet*4;
+  var msg='';
+  var resDiv=document.getElementById('race-result');
+  
+  if(won){
+    S.ore+=payout;
+    S.mudd=Math.floor(S.ore/1000);
+    msg='\u{1F3C6} '+winner.name+' wins the race! +'+payout+' MuddOre!';
+    resDiv.className='rou-result rou-win';
+  }else{
+    msg=winner.name+' wins. Your companion fell short.';
+    resDiv.className='rou-result rou-lose';
+  }
+  resDiv.innerHTML=msg;
+  document.getElementById('race-msg').textContent=won?'VICTORY':'Race over';
+  document.getElementById('race-game-area').style.display='none';
+  document.getElementById('race-ore').textContent=S.ore;
+  save();updateUI();
+  
+  setTimeout(function(){
+    document.getElementById('race-controls').style.display='block';
+    document.getElementById('race-start-btn').textContent='Race Again';
+    document.getElementById('race-start-btn').disabled=false;
+  },1500);
 }
 
 // === INIT ===
