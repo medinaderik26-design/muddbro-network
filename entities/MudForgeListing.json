@@ -1,0 +1,70 @@
+{
+  "properties": {
+    "seller_telegram_id": {
+      "type": "string"
+    },
+    "seller_username": {
+      "type": "string"
+    },
+    "nft_name": {
+      "type": "string"
+    },
+    "nft_image_url": {
+      "type": "string"
+    },
+    "nft_collection": {
+      "type": "string"
+    },
+    "nft_item_index": {
+      "type": "integer"
+    },
+    "tribe": {
+      "type": "string"
+    },
+    "rarity": {
+      "type": "string",
+      "enum": [
+        "Common",
+        "Rare",
+        "Epic",
+        "Legendary",
+        "Mythic"
+      ]
+    },
+    "gear_slot": {
+      "type": "string"
+    },
+    "mining_bonus": {
+      "type": "number"
+    },
+    "companion_bonus": {
+      "type": "number"
+    },
+    "racing_bonus": {
+      "type": "number"
+    },
+    "price_mudd": {
+      "type": "number"
+    },
+    "price_mudd_ore": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "sold",
+        "cancelled"
+      ]
+    },
+    "buyer_telegram_id": {
+      "type": "string"
+    },
+    "sold_at": {
+      "type": "string"
+    }
+  },
+  "type": "object",
+  "required": [],
+  "name": "MudForgeListing"
+}

@@ -1,0 +1,59 @@
+{
+  "properties": {
+    "owner_telegram_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "image_url": {
+      "type": "string"
+    },
+    "tribe": {
+      "type": "string"
+    },
+    "rarity": {
+      "type": "string",
+      "enum": [
+        "Common",
+        "Rare",
+        "Epic",
+        "Legendary",
+        "Mythic"
+      ]
+    },
+    "gear_slot": {
+      "type": "string"
+    },
+    "mining_bonus": {
+      "type": "number"
+    },
+    "companion_bonus": {
+      "type": "number"
+    },
+    "racing_bonus": {
+      "type": "number"
+    },
+    "tier": {
+      "type": "integer"
+    },
+    "equipped": {
+      "type": "boolean"
+    },
+    "minted_onchain": {
+      "type": "boolean"
+    },
+    "nft_address": {
+      "type": "string"
+    },
+    "listed_for_sale": {
+      "type": "boolean"
+    },
+    "listing_id": {
+      "type": "string"
+    }
+  },
+  "type": "object",
+  "required": [],
+  "name": "MudForgeGear"
+}
