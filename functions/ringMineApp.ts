@@ -1,4 +1,57 @@
-Deno.serve((_req: Request) => {
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+
+Deno.serve(async (req: Request) => {
+  // ── API: load/save player state via RingMinePlayer entity ──────────────
+  if (req.method === "POST") {
+    try {
+      const body = await req.json();
+      const base44 = createClientFromRequest(req);
+      const telegramId = String(body.telegram_id || "");
+      if (!telegramId) {
+        return new Response(JSON.stringify({ error: "missing telegram_id" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      }
+
+      if (body.action === "load") {
+        const existing = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
+        if (existing && existing.length > 0) {
+          const p = existing[0];
+          let state = null;
+          try { state = p.state_data ? JSON.parse(p.state_data) : null; } catch (e) { state = null; }
+          return new Response(JSON.stringify({ found: true, state }), { headers: { "Content-Type": "application/json" } });
+        }
+        return new Response(JSON.stringify({ found: false, state: null }), { headers: { "Content-Type": "application/json" } });
+      }
+
+      if (body.action === "save") {
+        const state = body.state || {};
+        const existing = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
+        const payload: any = {
+          telegram_id: telegramId,
+          username: body.username || "",
+          full_name: body.full_name || "",
+          state_data: JSON.stringify(state),
+          mudd_ore_balance: state.ore || 0,
+          mudd_balance: state.mudd || 0,
+          growth_xp: state.xp || 0,
+          companion_bond: state.bond || 0,
+          streak_days: state.streak || 0,
+          companion: state.companion || null
+        };
+        if (existing && existing.length > 0) {
+          await base44.asServiceRole.entities.RingMinePlayer.update(existing[0].id, payload);
+        } else {
+          await base44.asServiceRole.entities.RingMinePlayer.create(payload);
+        }
+        return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify({ error: "unknown action" }), { status: 400, headers: { "Content-Type": "application/json" } });
+    } catch (e) {
+      console.error("ringMineApp API error:", e);
+      return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { "Content-Type": "application/json" } });
+    }
+  }
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -419,7 +472,50 @@ var S = {
 };
 try { var saved = localStorage.getItem('rm_state'); if(saved) S = JSON.parse(saved); } catch(e){}
 
-function save() { try { localStorage.setItem('rm_state', JSON.stringify(S)); } catch(e){} }
+var telegramId = null, tgUsername = '', tgFullName = '';
+var saveTimer = null, pendingRemoteSave = false, remoteLoaded = false;
+
+function save() {
+  try { localStorage.setItem('rm_state', JSON.stringify(S)); } catch(e){}
+  queueRemoteSave();
+}
+
+function queueRemoteSave() {
+  if (!telegramId) return;
+  pendingRemoteSave = true;
+  if (!saveTimer) {
+    saveTimer = setTimeout(function() {
+      saveTimer = null;
+      if (pendingRemoteSave) { pendingRemoteSave = false; remoteSave(); }
+    }, 2000);
+  }
+}
+
+function remoteSave() {
+  if (!telegramId) return;
+  try {
+    fetch(window.location.href, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'save', telegram_id: telegramId, username: tgUsername, full_name: tgFullName, state: S })
+    });
+  } catch(e){}
+}
+
+function remoteLoad() {
+  if (!telegramId) return Promise.resolve();
+  return fetch(window.location.href, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'load', telegram_id: telegramId })
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if (d && d.found && d.state) {
+      S = Object.assign(S, d.state);
+      try { localStorage.setItem('rm_state', JSON.stringify(S)); } catch(e){}
+    }
+    remoteLoaded = true;
+  }).catch(function(e){ remoteLoaded = true; });
+}
 
 // === COMPANIONS ===
 var COMPANIONS = [
@@ -1001,17 +1097,38 @@ function finishRace(winner){
 }
 
 // === INIT ===
+function fullInitRender() {
+  recalcBonuses();
+  updateUI();
+  if(S.companion) {
+    var c = COMPANIONS.find(function(x){return x.id===S.companion});
+    if(c) queenImg.src = c.img;
+  }
+  try { renderAvatar(); } catch(e){}
+  try { renderJournal(); } catch(e){}
+  try { renderStats(); } catch(e){}
+}
+
 recalcBonuses();
 updateUI();
 if(S.companion) {
-  var c = COMPANIONS.find(function(x){return x.id===S.companion});
-  if(c) queenImg.src = c.img;
+  var c0 = COMPANIONS.find(function(x){return x.id===S.companion});
+  if(c0) queenImg.src = c0.img;
 }
 
 // Telegram WebApp
 if(window.Telegram && window.Telegram.WebApp) {
   Telegram.WebApp.ready();
   Telegram.WebApp.expand();
+  try {
+    var tgUser = Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
+    if (tgUser && tgUser.id) {
+      telegramId = String(tgUser.id);
+      tgUsername = tgUser.username || '';
+      tgFullName = ((tgUser.first_name||'') + ' ' + (tgUser.last_name||'')).trim();
+      remoteLoad().then(fullInitRender);
+    }
+  } catch(e){}
 }
 </script>
 </body>
