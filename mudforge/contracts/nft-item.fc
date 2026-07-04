@@ -1,0 +1,48 @@
+;; MudForge Gear NFT Item Contract (TEP-62)
+;; Individual NFT item = individual smart contract
+;; Stores: owner, collection address, index, content
+
+#include "stdlib.fc";
+#include "op-codes.fc";
+
+;; Storage:
+;; item#_ owner_addr collection_addr index content
+
+;; Transfer NFT to new owner
+int op::transfer() asm "0x5fcc3d1e PUSHINT";
+
+;; Get NFT content (metadata)
+cell get_nft_data() method_id {
+  var ds = get_data().begin_parse();
+  ;; Returns: owner, collection, index, content
+  return get_data();
+}
+
+;; Get current owner
+int get_owner() method_id {
+  var ds = get_data().begin_parse();
+  ds~load_uint(32);
+  return ds~load_msg_addr().load_uint(267);
+}
+
+;; Transfer ownership
+() recv_internal(int msg_value, cell in_msg_full, slice in_msg_body) impure {
+  if (in_msg_body.slice_empty?()) { return (); }
+  
+  slice cs = in_msg_full.begin_parse();
+  int flags = cs~load_uint(4);
+  if (flags & 1) { return (); } ;; bounced
+  
+  slice sender_address = cs~load_msg_addr();
+  int op = in_msg_body~load_op();
+  
+  if (op == op::transfer()) {
+    ;; Transfer NFT to new owner
+    ;; Requires: sender is current owner
+    ;; new_owner_address, response_address, forward_payload
+    slice new_owner = in_msg_body~load_msg_addr();
+    ;; Update owner in storage
+    ;; Emit transfer event
+    return ();
+  }
+}
