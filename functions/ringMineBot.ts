@@ -124,7 +124,8 @@ function mainMenu() {
   return {
     keyboard: [
       [{ text: "📔 Journal" }, { text: "👑 My Queen" }],
-      [{ text: "📈 My Growth" }, { text: "💰 Muddcoin" }]
+      [{ text: "📈 My Growth" }, { text: "💰 Muddcoin" }],
+      [{ text: "⚒ MudForge" }]
     ],
     resize_keyboard: true
   };
@@ -136,7 +137,7 @@ const MOOD_EMOJI: Record<string, string> = {
   determined: "🔥", uncertain: "🌫️"
 };
 
-const MENU_TEXTS = ["📔 Journal", "👑 My Queen", "📈 My Growth", "💰 Muddcoin"];
+const MENU_TEXTS = ["📔 Journal", "👑 My Queen", "📈 My Growth", "💰 Muddcoin", "⚒ MudForge"];
 
 // ── Main handler ──────────────────────────────────────────────────────────
 
@@ -214,10 +215,18 @@ Deno.serve(async (req: Request) => {
     return new Response("ok");
   }
 
+  // ── /forge ────────────────────────────────────────────────────────────
+  if (text === "/forge") {
+    await sendMessage(chatId,
+      "⚒ *MudForge — NFT Marketplace*\n\nBuy, sell, and trade gear NFTs.\nAll equipment is minted on-chain to your TON wallet.\n\nTap below to enter the Forge.",
+      { reply_markup: { inline_keyboard: [[{ text: "⚒ Enter MudForge", web_app: { url: "https://superagent-ec909dfa.base44.app/functions/mudForgeApp" } }]] } });
+    return new Response("ok");
+  }
+
   // ── /help ─────────────────────────────────────────────────────────────
   if (text === "/help") {
     await sendMessage(chatId,
-      "🌀 *Ring Mine — Help*\n\n/start — Begin your journey\n/help — This message\n\n📔 *Journal* — Write freely, earn XP + MUDD\n👑 *My Queen* — Speak with her directly\n📈 *My Growth* — View your stats\n💰 *Muddcoin* — Your MUDD balance\n\n_Part of the Muddbro Network_",
+      "🌀 *Ring Mine — Help*\n\n/start — Begin your journey\n/help — This message\n\n📔 *Journal* — Write freely, earn XP + MUDD\n👑 *My Queen* — Speak with her directly\n📈 *My Growth* — View your stats\n💰 *Muddcoin* — Your MUDD balance\n⚒ *MudForge* — NFT gear marketplace\n/forge — Open MudForge directly\n\n_Part of the Muddbro Network_",
       { reply_markup: mainMenu() });
     return new Response("ok");
   }
@@ -280,6 +289,14 @@ Deno.serve(async (req: Request) => {
     await sendMessage(chatId,
       `📈 *Your Growth*\n\n✨ Growth XP: ${player.growth_xp || 0}\n💰 MUDD Balance: ${player.mudd_balance || 0}\n👑 Queen Bond: ${player.queen_bond || 0}/100\n🔥 Streak: ${player.streak_days || 0} days\n📔 Journal entries: ${journals}`,
       { reply_markup: mainMenu() });
+    return new Response("ok");
+  }
+
+  // ── Menu: MudForge ────────────────────────────────────────────────────
+  if (text === "⚒ MudForge") {
+    await sendMessage(chatId,
+      "⚒ *MudForge — NFT Marketplace*\n\nBuy gear NFTs with MuddOre. List your gear for sale. Trade with other miners.\n\nAll gear is minted as NFTs — yours forever, on-chain.",
+      { reply_markup: { inline_keyboard: [[{ text: "⚒ Enter MudForge", web_app: { url: "https://superagent-ec909dfa.base44.app/functions/mudForgeApp" } }]] } });
     return new Response("ok");
   }
 
