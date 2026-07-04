@@ -233,21 +233,21 @@ var marketListings = [];
 
 var FORGE_GEAR = [
   {id:"starter_helm",name:"Rune Tactician Helm",tribe:"Starter",rarity:"Common",slot:"Head",tier:1,mining:5,companion:0,racing:0,cost:100,
-   img:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/23b3e5f4c_image-96.jpg"},
+   img:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/b47f69353_23b3e5f4c_image-96.jpg"},
   {id:"hollowkin_helm",name:"Hollow Veil Helm",tribe:"Hollow-Kin",rarity:"Rare",slot:"Head",tier:2,mining:10,companion:3,racing:0,cost:500,
-   img:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/6ddc0306f_image-68.jpg"},
+   img:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/9f05a7c25_6ddc0306f_image-68.jpg"},
   {id:"rootweaver_helm",name:"Crystal Root Helm",tribe:"Root-Weavers",rarity:"Rare",slot:"Head",tier:2,mining:12,companion:2,racing:2,cost:500,
-   img:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/6ef5a7bd3_image-70.jpg"},
+   img:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/62de46d71_6ef5a7bd3_image-70.jpg"},
   {id:"bonesinger_helm",name:"Bone-Singer Helm",tribe:"Bone-Singers",rarity:"Rare",slot:"Head",tier:2,mining:8,companion:5,racing:0,cost:500,
-   img:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/b028d285f_image-67.jpg"},
+   img:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/28d6d4897_b028d285f_image-67.jpg"},
   {id:"stormkin_mask",name:"Plasma Storm Mask",tribe:"Storm-Kin",rarity:"Epic",slot:"Head",tier:3,mining:20,companion:5,racing:5,cost:2000,
-   img:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/caaf486c2_image-64.jpg"},
+   img:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/5ed6c8feb_caaf486c2_image-64.jpg"},
   {id:"glimmer_visor",name:"Glimmer HUD Visor",tribe:"Glimmer-Children",rarity:"Epic",slot:"Head",tier:3,mining:25,companion:3,racing:3,cost:2000,
-   img:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/987e25690_image-78.jpg"},
+   img:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/43ca899d9_987e25690_image-78.jpg"},
   {id:"silver_spiked",name:"Silver Crystal Helm",tribe:"None",rarity:"Legendary",slot:"Head",tier:4,mining:35,companion:10,racing:5,cost:10000,
-   img:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/495e318cb_image-165.jpg"},
+   img:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/cd0afe5a6_495e318cb_image-165.jpg"},
   {id:"queens_mask",name:"Queen Obsidian Mask",tribe:"Queen Protocol",rarity:"Mythic",slot:"Head",tier:5,mining:50,companion:20,racing:10,cost:50000,
-   img:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/aa874fd62_image-150.jpg"}
+   img:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/a5091221d_aa874fd62_image-150.jpg"}
 ];
 
 function apiCall(data) {
