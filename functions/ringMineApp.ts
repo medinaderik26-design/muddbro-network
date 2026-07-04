@@ -538,6 +538,15 @@ var GEAR = [
   {id:"star_fragment",icon:"\u2728",name:"Star Fragment",pow:"+3 Bond/tap",cost:120}
 ];
 
+// Event delegation for gear buttons (avoids inline onclick quoting issues)
+document.getElementById('gear-grid').addEventListener('click', function(e) {
+  var btn = e.target.closest('.gear-btn');
+  if (!btn) return;
+  var id = btn.getAttribute('data-gear-id');
+  var cost = parseInt(btn.getAttribute('data-gear-cost'), 10);
+  toggleGear(id, cost);
+});
+
 // === NAV ===
 function nav(screen) {
   document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('on')});
@@ -704,7 +713,7 @@ function renderGear() {
     var btnClass = equipped ? 'gear-uneq' : 'gear-buy';
     var btnText = equipped ? 'Unequip' : 'Buy ('+g.cost+')';
     div.innerHTML = '<div class="gear-icon">'+g.icon+'</div><div class="gear-name">'+g.name+'</div><div class="gear-pow">'+g.pow+'</div>' +
-      '<button class="gear-btn '+btnClass+'" onclick="toggleGear(\''+g.id+'\','+g.cost+')" '+((!equipped && S.ore < g.cost) ? 'disabled' : '')+'>'+btnText+'</button>';
+      '<button class="gear-btn '+btnClass+'" data-gear-id="'+g.id+'" data-gear-cost="'+g.cost+'" '+((!equipped && S.ore < g.cost) ? 'disabled' : '')+'>'+btnText+'</button>';
     grid.appendChild(div);
   });
 }
