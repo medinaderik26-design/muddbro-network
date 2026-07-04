@@ -169,6 +169,90 @@ Deno.serve(async (req: Request) => {
         return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
       }
 
+      // ── WALLET API ──
+      if (body.action === "link_wallet") {
+        const walletAddress = String(body.wallet_address || "").trim();
+        if (!walletAddress) {
+          return new Response(JSON.stringify({ ok: false, error: "Missing wallet_address" }), { headers: { "Content-Type": "application/json" } });
+        }
+        const validAddress = /^[UE0]Q[A-Za-z0-9_\-]{46,48}$/.test(walletAddress);
+        if (!validAddress) {
+          return new Response(JSON.stringify({ ok: false, error: "Invalid TON address" }), { headers: { "Content-Type": "application/json" } });
+        }
+        const players = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
+        if (!players || players.length === 0) {
+          return new Response(JSON.stringify({ ok: false, error: "Player not found" }), { headers: { "Content-Type": "application/json" } });
+        }
+        await base44.asServiceRole.entities.RingMinePlayer.update(players[0].id, { ton_wallet_address: walletAddress });
+        if (players[0].state_data) {
+          try { const st = JSON.parse(players[0].state_data); st.tonWallet = walletAddress; await base44.asServiceRole.entities.RingMinePlayer.update(players[0].id, { state_data: JSON.stringify(st) }); } catch(e){}
+        }
+        return new Response(JSON.stringify({ ok: true, wallet_address: walletAddress }), { headers: { "Content-Type": "application/json" } });
+      }
+
+      if (body.action === "get_wallet") {
+        const players = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
+        if (!players || players.length === 0) {
+          return new Response(JSON.stringify({ ok: false, error: "Player not found" }), { headers: { "Content-Type": "application/json" } });
+        }
+        const p = players[0];
+        let stateOre = 0;
+        if (p.state_data) { try { const st = JSON.parse(p.state_data); stateOre = st.ore || 0; } catch(e){} }
+        const totalOre = Math.max(p.mudd_ore_balance || 0, stateOre);
+        return new Response(JSON.stringify({
+          ok: true, wallet_linked: !!(p.ton_wallet_address), wallet_address: p.ton_wallet_address || "",
+          mudd_ore_balance: totalOre, total_withdrawn: p.total_withdrawn || 0,
+          can_withdraw: totalOre >= 1000, min_withdrawal: 1000
+        }), { headers: { "Content-Type": "application/json" } });
+      }
+
+      if (body.action === "withdraw") {
+        const oreAmount = Number(body.mudd_ore_amount || 0);
+        if (oreAmount < 1000) {
+          return new Response(JSON.stringify({ ok: false, error: "Minimum withdrawal is 1000 MuddOre" }), { headers: { "Content-Type": "application/json" } });
+        }
+        const players = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
+        if (!players || players.length === 0) {
+          return new Response(JSON.stringify({ ok: false, error: "Player not found" }), { headers: { "Content-Type": "application/json" } });
+        }
+        const p = players[0];
+        const walletAddress = p.ton_wallet_address || "";
+        if (!walletAddress) {
+          return new Response(JSON.stringify({ ok: false, error: "No wallet linked" }), { headers: { "Content-Type": "application/json" } });
+        }
+        let currentOre = p.mudd_ore_balance || 0;
+        let stateData = null;
+        if (p.state_data) { try { stateData = JSON.parse(p.state_data); currentOre = Math.max(currentOre, stateData.ore || 0); } catch(e){} }
+        if (currentOre < oreAmount) {
+          return new Response(JSON.stringify({ ok: false, error: "Insufficient MuddOre: have " + currentOre + ", need " + oreAmount }), { headers: { "Content-Type": "application/json" } });
+        }
+        const muddAmount = Math.floor(oreAmount / 1000);
+        const remainingOre = currentOre - oreAmount;
+        const leftoverOre = oreAmount % 1000;
+        let history = [];
+        if (p.withdrawal_history) { try { history = JSON.parse(p.withdrawal_history); } catch(e){} }
+        history.push({ date: new Date().toISOString(), mudd_ore_amount: oreAmount, mudd_sent: muddAmount, wallet: walletAddress, status: "pending" });
+        if (history.length > 50) history = history.slice(-50);
+        const updateData = { mudd_ore_balance: remainingOre + leftoverOre, total_withdrawn: (p.total_withdrawn || 0) + muddAmount, withdrawal_history: JSON.stringify(history) };
+        if (stateData) { stateData.ore = remainingOre + leftoverOre; updateData.state_data = JSON.stringify(stateData); }
+        await base44.asServiceRole.entities.RingMinePlayer.update(p.id, updateData);
+        return new Response(JSON.stringify({ ok: true, mudd_sent: muddAmount, remaining_ore: remainingOre + leftoverOre, wallet: walletAddress, status: "pending" }), { headers: { "Content-Type": "application/json" } });
+      }
+
+      if (body.action === "get_history") {
+        const players = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
+        if (!players || players.length === 0) { return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } }); }
+        const p = players[0];
+        let history = [];
+        if (p.withdrawal_history) { try { history = JSON.parse(p.withdrawal_history); } catch(e){} }
+        return new Response(JSON.stringify({ ok: true, total_withdrawn: p.total_withdrawn || 0, history: history.slice(-20) }), { headers: { "Content-Type": "application/json" } });
+      }
+
+      if (body.action === "load_equipped_gear") {
+        const gear = await base44.asServiceRole.entities.MudForgeGear.filter({ owner_telegram_id: telegramId, equipped: true });
+        return new Response(JSON.stringify({ gear: gear || [] }), { headers: { "Content-Type": "application/json" } });
+      }
+
       return new Response(JSON.stringify({ error: "unknown action" }), { status: 400, headers: { "Content-Type": "application/json" } });
     } catch (e) {
       console.error("ringMineApp API error:", e);
@@ -643,6 +727,7 @@ body{background-image:radial-gradient(circle at 50% 50%,rgba(100,200,255,0.08) 0
   <button class="nb" data-screen="games" onclick="nav('games')"><span class="ic">\u{1F3B0}</span>Games</button>
   <button class="nb" data-screen="stats" onclick="nav('stats')"><span class="ic">\u2666</span>Stats</button>
   <button class="nb" data-screen="forge" onclick="nav('forge')"><span class="ic">\u2692</span>Forge</button>
+  <button class="nb" data-screen="wallet" onclick="nav('wallet')"><span class="ic">\u{1F4B0}</span>Wallet</button>
 </div>
 
 <script>
@@ -696,7 +781,16 @@ function remoteLoad() {
       try { localStorage.setItem('rm_state', JSON.stringify(S)); } catch(e){}
     }
     remoteLoaded = true;
+    loadForgeGearBonuses();
   }).catch(function(e){ remoteLoaded = true; });
+}
+
+function apiCall(data) {
+  return fetch(window.location.href, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data)
+  }).then(function(r) { return r.json(); });
 }
 
 // === COMPANIONS ===
@@ -733,7 +827,7 @@ document.getElementById('gear-grid').addEventListener('click', function(e) {
 function nav(screen) {
   document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('on')});
   document.querySelectorAll('.nb').forEach(function(b){b.classList.remove('on')});
-  var map = {mine:'s-mine',avatar:'s-avatar',lore:'s-lore',journal:'s-journal',games:'s-games',stats:'s-stats',forge:'s-forge'};
+  var map = {mine:'s-mine',avatar:'s-avatar',lore:'s-lore',journal:'s-journal',games:'s-games',stats:'s-stats',forge:'s-forge',wallet:'s-wallet'};
   document.getElementById(map[screen]).classList.add('on');
   document.querySelector('[data-screen="'+screen+'"]').classList.add('on');
   if(screen==='avatar') renderAvatar();
@@ -741,6 +835,7 @@ function nav(screen) {
   if(screen==='journal') renderJournal();
   if(screen==='games') renderGames();
   if(screen==='forge') renderForge();
+  if(screen==='wallet') loadWallet();
 }
 
 // === TAP TO MINE ===
@@ -1627,6 +1722,97 @@ if(S.companion) {
 // Telegram WebApp
 if(window.Telegram && window.Telegram.WebApp) {
   Telegram.WebApp.ready();
+
+// === WALLET ===
+var walletLoaded = false;
+function loadWallet() {
+  if (!telegramId) return;
+  apiCall({action: 'get_wallet', telegram_id: telegramId}).then(function(d) {
+    if (!d || !d.ok) return;
+    if (d.wallet_linked) {
+      document.getElementById('wallet-not-linked').style.display = 'none';
+      document.getElementById('wallet-linked').style.display = 'block';
+      document.getElementById('wallet-addr-display').textContent = d.wallet_address;
+      document.getElementById('wallet-ore').textContent = d.mudd_ore_balance;
+      document.getElementById('wallet-total-withdrawn').textContent = (d.total_withdrawn || 0) + ' MUDD';
+      loadWalletHistory();
+    } else {
+      document.getElementById('wallet-not-linked').style.display = 'block';
+      document.getElementById('wallet-linked').style.display = 'none';
+    }
+    walletLoaded = true;
+  });
+}
+function loadWalletHistory() {
+  apiCall({action: 'get_history', telegram_id: telegramId}).then(function(d) {
+    if (!d || !d.ok) return;
+    var el = document.getElementById('wallet-history');
+    if (!d.history || d.history.length === 0) { el.innerHTML = 'No withdrawals yet.'; return; }
+    el.innerHTML = '';
+    d.history.reverse().forEach(function(h) {
+      var date = new Date(h.date).toLocaleDateString();
+      var statusColor = h.status === 'pending' ? '#ffd700' : '#44ff44';
+      el.innerHTML += '<div style="border-bottom:1px solid rgba(68,85,119,0.3);padding:6px 0">' +
+        '<span style="color:var(--gold)">' + h.mudd_sent + ' MUDD</span> from ' +
+        h.mudd_ore_amount + ' Ore <span style="color:' + statusColor + ';font-size:8px">[' + h.status + ']</span> ' +
+        '<span style="color:rgba(160,240,255,0.2);font-size:8px">' + date + '</span></div>';
+    });
+  });
+}
+function linkWallet() {
+  var addr = document.getElementById('wallet-input').value.trim();
+  if (!addr) return;
+  apiCall({action: 'link_wallet', telegram_id: telegramId, wallet_address: addr}).then(function(d) {
+    if (d && d.ok) { toastMsg('Wallet linked successfully!'); loadWallet(); }
+    else { toastMsg('Failed: ' + (d.error || 'invalid address')); }
+  });
+}
+function withdrawMudd() {
+  var amount = parseInt(document.getElementById('withdraw-input').value, 10);
+  if (!amount || amount < 1000) { toastMsg('Minimum withdrawal is 1000 MuddOre'); return; }
+  if (amount > S.ore) { toastMsg('Insufficient MuddOre. You have ' + S.ore); return; }
+  apiCall({action: 'withdraw', telegram_id: telegramId, mudd_ore_amount: amount}).then(function(d) {
+    if (d && d.ok) {
+      S.ore = d.remaining_ore;
+      S.mudd = Math.floor(S.ore / 1000);
+      updateUI();
+      save();
+      toastMsg('Withdrew ' + d.mudd_sent + ' MUDD! Status: ' + d.status);
+      loadWallet();
+    } else { toastMsg('Failed: ' + (d.error || 'unknown error')); }
+  });
+}
+function toastMsg(msg) {
+  var t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(10,10,15,0.95);border:1px solid var(--cyan);border-radius:10px;padding:12px 20px;color:var(--cyan);font-size:11px;z-index:999;font-family:Courier New,monospace';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function() { t.remove(); }, 3000);
+}
+// Wallet event delegation
+document.addEventListener('click', function(e) {
+  var el;
+  if ((el = e.target.closest('[data-wallet-action]'))) {
+    var action = el.getAttribute('data-wallet-action');
+    if (action === 'link') linkWallet();
+    if (action === 'withdraw') withdrawMudd();
+    return;
+  }
+});
+
+// === MUDFORGE GEAR BONUS INTEGRATION ===
+function loadForgeGearBonuses() {
+  if (!telegramId) return;
+  apiCall({action: 'load_equipped_gear', telegram_id: telegramId}).then(function(d) {
+    if (!d || !d.gear || d.gear.length === 0) return;
+    d.gear.forEach(function(g) {
+      if (g.mining_bonus) oreBonus += g.mining_bonus / 100;
+      if (g.companion_bonus) bondBonus += g.companion_bonus / 100;
+    });
+  });
+}
+
+
   Telegram.WebApp.expand();
   try {
     var tgUser = Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user;
