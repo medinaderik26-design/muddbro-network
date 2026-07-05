@@ -1,0 +1,31 @@
+{
+  "name": "muddbro-network",
+  "version": "0.4.0",
+  "description": "Muddbro Network — Telegram-native Web3 gaming ecosystem on TON",
+  "tasks": {
+    "dev:ringmine": "deno run --allow-net --allow-env --allow-read functions/ringMineApp.ts",
+    "dev:innerEarth": "deno run --allow-net --allow-env --allow-read functions/innerEarthBot.ts",
+    "dev:wallet": "deno run --allow-net --allow-env --allow-read functions/walletManager.ts",
+    "dev:forge": "deno run --allow-net --allow-env --allow-read functions/mudForgeApp.ts",
+    "check": "deno check functions/*.ts",
+    "lint": "deno lint functions/*.ts",
+    "fmt": "deno fmt functions/*.ts",
+    "test": "deno test --allow-net --allow-env tests/"
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"],
+      "exclude": ["no-explicit-any", "no-unused-vars"]
+    }
+  },
+  "fmt": {
+    "indentWidth": 2,
+    "lineWidth": 120,
+    "semiColons": true
+  },
+  "imports": {
+    "@base44/sdk": "npm:@base44/sdk@0.8.31",
+    "@ton/ton": "npm:@ton/ton@15.0.0",
+    "@ton/crypto": "npm:@ton/crypto@3.2.0"
+  }
+}
