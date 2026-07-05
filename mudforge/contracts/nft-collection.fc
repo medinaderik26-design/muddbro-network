@@ -1,95 +1,240 @@
-;; MudForge Gear NFT Collection Contract (TEP-62)
-;; Deploys NFT items for Ring Mine equipment
-;; Based on TON reference implementation
+;; Slice comparison primitive
+int equal_slices(slice a, slice b) asm "SDEQ";
+
+;; MudForge Gear NFT Collection Contract (TEP-62 compliant)
+;; Deployed by G0_Architect wallet
+;; Mints gear NFTs for Ring Mine / MudForge marketplace
 
 #include "stdlib.fc";
 #include "op-codes.fc";
 #include "params.fc";
 
-;; Storage scheme:
-;; collection#_ root_admin_addr balance content metadata item_code item_index
+;; ── Storage ───────────────────────────────────────────────────────────────
+;; admin_addr | balance | content | item_code | royalty_params | next_index
 
-() store_uint128(int x) impure asm "STUX128";
+(slice, int, cell, cell, cell, int) load_data() inline_ref {
+  var ds = get_data().begin_parse();
+  var admin = ds~load_msg_addr();
+  var bal = ds~load_coins();
+  var content_cell = ds~load_ref();
+  var code = ds~load_ref();
+  var royalty = ds~load_ref();
+  var idx = ds~load_uint(64);
+  return (admin, bal, content_cell, code, royalty, idx);
+}
 
-int store_collection_data(int root_admin_addr, int balance, cell content, cell metadata, cell item_code, int item_index) impure {
+() save_data(slice admin_addr, int balance, cell content, cell item_code, cell royalty_params, int next_index) impure inline_ref {
   begin_cell()
-    .store_uint(0, 32)          ;; type tag
-    .store_slice(begin_cell().store_uint(root_admin_addr, 267).end_cell().begin_parse())
+    .store_slice(admin_addr)
     .store_coins(balance)
     .store_ref(content)
-    .store_ref(metadata)
     .store_ref(item_code)
-    .store_uint(item_index, 64)
+    .store_ref(royalty_params)
+    .store_uint(next_index, 64)
   .end_cell()
   .set_data();
 }
 
-() load_data() impure {
-  var ds = get_data().begin_parse();
-  ;; loaded values available via inline
+;; ── Royalty params helper ─────────────────────────────────────────────────
+(int, int, slice) load_royalty_params(cell royalty_cell) inline_ref {
+  var rs = royalty_cell.begin_parse();
+  var num = rs~load_uint(16);
+  var den = rs~load_uint(16);
+  var dest = rs~load_msg_addr();
+  return (num, den, dest);
 }
 
-;; Mint a new NFT gear item
-;; Called by backend with admin authority
-int op::mint() asm "0x249cbfa1 PUSHINT";
+;; ── Build NFT item state init ─────────────────────────────────────────────
+cell build_item_state_init(int item_index, slice owner_addr, cell item_content, cell item_code, slice collection_addr) inline_ref {
+  ;; Item storage: owner_addr content item_index collection_addr
+  cell item_data = begin_cell()
+    .store_slice(owner_addr)
+    .store_ref(item_content)
+    .store_uint(item_index, 64)
+    .store_slice(collection_addr)
+    .end_cell();
+  
+  cell state_init = begin_cell()
+    .store_uint(0, 2)
+    .store_uint(1, 1)
+    .store_uint(1, 1)
+    .store_uint(0, 1)
+    .store_ref(item_code)
+    .store_ref(item_data)
+    .end_cell();
+  
+  return state_init;
+}
 
+;; ── Main handler ──────────────────────────────────────────────────────────
 () recv_internal(int msg_value, cell in_msg_full, slice in_msg_body) impure {
   if (in_msg_body.slice_empty?()) { return (); }
   
   slice cs = in_msg_full.begin_parse();
   int flags = cs~load_uint(4);
-  if (flags & 1) { ;; bounced
-    return ();
-  }
+  if (flags & 1) { return (); }
+  
   slice sender_address = cs~load_msg_addr();
+  int op = in_msg_body~load_uint(32);
+  int query_id = in_msg_body~load_uint(64);
   
-  int op = in_msg_body~load_op();
+  var (admin_addr, balance, content, item_code, royalty_params, next_index) = load_data();
   
+  ;; ── Mint NFT ──
   if (op == op::mint()) {
-    ;; Mint new NFT: requires admin authority
-    ;; item_index, item_content, item_owner_address
-    int item_index = in_msg_body~load_uint(64);
-    cell item_content = in_msg_body~load_ref();
-    slice item_owner = in_msg_body~load_msg_addr();
-    
-    ;; Deploy NFT item contract
-    ;; Each NFT = its own smart contract on TON
-    ;; ... (item deployment logic)
-    
+    if (equal_slices(sender_address, admin_addr)) {
+      int item_index = in_msg_body~load_uint(64);
+      if (item_index == 0) {
+        item_index = next_index;
+      }
+      slice item_owner = in_msg_body~load_msg_addr();
+      cell item_content = in_msg_body~load_ref();
+      
+      cell state_init = build_item_state_init(item_index, item_owner, item_content, item_code, my_address());
+      int item_addr_hash = cell_hash(state_init);
+      
+      var msg = begin_cell()
+        .store_uint(0x18, 6)
+        .store_uint(workchain(), 11)
+        .store_uint(item_addr_hash, 256)
+        .store_coins(msg_value)
+        .store_uint(1, 1)
+        .store_uint(1, 1)
+        .store_ref(state_init)
+        .store_ref(begin_cell()
+          .store_uint(op::transfer_ownership(), 32)
+          .store_uint(query_id, 64)
+          .store_slice(admin_addr)
+          .end_cell())
+        .end_cell();
+      
+      send_raw_message(msg, 0);
+      save_data(admin_addr, balance, content, item_code, royalty_params, next_index + 1);
+    }
     return ();
   }
   
-  ;; Get methods for collection info
+  ;; ── Batch mint ──
+  if (op == op::batch_mint()) {
+    if (equal_slices(sender_address, admin_addr)) {
+      int count = in_msg_body~load_uint(32);
+      int i = 0;
+      while (i < count) {
+        slice item_owner = in_msg_body~load_msg_addr();
+        cell item_content = in_msg_body~load_ref();
+        
+        cell state_init = build_item_state_init(next_index, item_owner, item_content, item_code, my_address());
+        int item_addr_hash = cell_hash(state_init);
+        
+        var msg = begin_cell()
+          .store_uint(0x18, 6)
+          .store_uint(workchain(), 11)
+          .store_uint(item_addr_hash, 256)
+          .store_coins(msg_value / count)
+          .store_uint(1, 1)
+          .store_uint(1, 1)
+          .store_ref(state_init)
+          .store_ref(begin_cell()
+            .store_uint(op::transfer_ownership(), 32)
+            .store_uint(query_id, 64)
+            .store_slice(admin_addr)
+            .end_cell())
+          .end_cell();
+        
+        send_raw_message(msg, 0);
+        next_index += 1;
+        i += 1;
+      }
+      save_data(admin_addr, balance, content, item_code, royalty_params, next_index);
+    }
+    return ();
+  }
+  
+  ;; ── Change admin ──
+  if (op == op::change_admin()) {
+    if (equal_slices(sender_address, admin_addr)) {
+      slice new_admin = in_msg_body~load_msg_addr();
+      save_data(new_admin, balance, content, item_code, royalty_params, next_index);
+    }
+    return ();
+  }
+  
+  ;; ── Edit royalty params ──
+  if (op == op::edit_royalty_params()) {
+    if (equal_slices(sender_address, admin_addr)) {
+      int numerator = in_msg_body~load_uint(16);
+      int denominator = in_msg_body~load_uint(16);
+      slice dest = in_msg_body~load_msg_addr();
+      cell new_royalty = begin_cell()
+        .store_uint(numerator, 16)
+        .store_uint(denominator, 16)
+        .store_slice(dest)
+        .end_cell();
+      save_data(admin_addr, balance, content, item_code, new_royalty, next_index);
+    }
+    return ();
+  }
+  
+  ;; ── Royalty params query ──
+  if (op == op::royalty_params()) {
+    var (numerator, denominator, dest) = load_royalty_params(royalty_params);
+    var msg = begin_cell()
+      .store_uint(0x10, 6)
+      .store_slice(sender_address)
+      .store_coins(0)
+      .store_uint(0, 1)
+      .store_uint(0, 1)
+      .store_uint(op::royalty_params(), 32)
+      .store_uint(query_id, 64)
+      .store_uint(numerator, 16)
+      .store_uint(denominator, 16)
+      .store_slice(dest)
+      .end_cell();
+    send_raw_message(msg, 64);
+    return ();
+  }
+  
   return ();
 }
 
-;; Get collection address
-int get_collection_address() method_id {
-  return my_address();
+;; ── Get methods (TEP-62) ──────────────────────────────────────────────────
+
+(int, cell, slice) get_collection_data() method_id {
+  var (admin_addr, balance, content, item_code, royalty_params, next_index) = load_data();
+  return (next_index, content, admin_addr);
 }
 
-;; Get admin address
-int get_admin_address() method_id {
-  var ds = get_data().begin_parse();
-  ds~load_uint(32);
-  return ds~load_msg_addr().load_uint(267);
+cell get_nft_address_by_index(int index) method_id {
+  var (admin_addr, _, _, item_code, _, _) = load_data();
+  cell dummy_data = begin_cell()
+    .store_uint(0, 267)
+    .store_ref(begin_cell().end_cell())
+    .store_uint(index, 64)
+    .store_slice(my_address())
+    .end_cell();
+  
+  cell state_init = begin_cell()
+    .store_uint(0, 2)
+    .store_uint(1, 1)
+    .store_uint(1, 1)
+    .store_uint(0, 1)
+    .store_ref(item_code)
+    .store_ref(dummy_data)
+    .end_cell();
+  
+  int addr_hash = cell_hash(state_init);
+  return begin_cell()
+    .store_uint(workchain(), 11)
+    .store_uint(addr_hash, 256)
+    .end_cell();
 }
 
-;; Get next item index
-int get_next_item_index() method_id {
-  var ds = get_data().begin_parse();
-  ds~load_uint(32);
-  ds~load_msg_addr();
-  ds~load_coins();
-  ds~load_ref();
-  ds~load_ref();
-  ds~load_ref();
-  return ds~load_uint(64);
+cell get_nft_content(int index, cell individual_content) method_id {
+  return individual_content;
 }
 
-;; Get NFT item content
-cell get_nft_item_content(int index) method_id {
-  ;; Returns metadata for item at index
-  ;; Metadata includes: name, description, image URI, attributes (rarity, tribe, stats)
-  return get_data();
+(int, int, slice) get_royalty_params() method_id {
+  var (_, _, _, _, royalty_params, _) = load_data();
+  var (numerator, denominator, dest) = load_royalty_params(royalty_params);
+  return (numerator, denominator, dest);
 }

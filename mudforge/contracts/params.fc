@@ -1,0 +1,11 @@
+;; params.fc — MudForge NFT parameters
+
+int workchain() asm "0 PUSHINT";
+
+int mint_price() asm "50000000 PUSHINT";      ;; 0.05 TON
+int min_storage() asm "20000000 PUSHINT";      ;; 0.02 TON min storage
+int royalty_factor() asm "100 PUSHINT";        ;; royalty = numerator / denominator
+int royalty_numerator() asm "5 PUSHINT";       ;; 5%
+int royalty_denominator() asm "100 PUSHINT";   ;; / 100
+
+int max_item_index() asm "100000 PUSHINT";     ;; max 100k items

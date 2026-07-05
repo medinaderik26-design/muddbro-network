@@ -1,48 +1,140 @@
-;; MudForge Gear NFT Item Contract (TEP-62)
-;; Individual NFT item = individual smart contract
-;; Stores: owner, collection address, index, content
+;; Slice comparison primitive
+int equal_slices(slice a, slice b) asm "SDEQ";
+
+;; MudForge Gear NFT Item Contract (TEP-62 compliant)
+;; Each NFT item = individual smart contract on TON
+;; Storage: owner_addr | content | item_index | collection_addr
 
 #include "stdlib.fc";
 #include "op-codes.fc";
+#include "params.fc";
 
-;; Storage:
-;; item#_ owner_addr collection_addr index content
+;; ── Storage helpers ──
 
-;; Transfer NFT to new owner
-int op::transfer() asm "0x5fcc3d1e PUSHINT";
-
-;; Get NFT content (metadata)
-cell get_nft_data() method_id {
+(slice, cell, int, slice) load_data() inline_ref {
   var ds = get_data().begin_parse();
-  ;; Returns: owner, collection, index, content
-  return get_data();
+  var owner = ds~load_msg_addr();
+  var content = ds~load_ref();
+  var index = ds~load_uint(64);
+  var collection = ds~load_msg_addr();
+  return (owner, content, index, collection);
 }
 
-;; Get current owner
-int get_owner() method_id {
-  var ds = get_data().begin_parse();
-  ds~load_uint(32);
-  return ds~load_msg_addr().load_uint(267);
+() save_data(slice owner, cell content, int index, slice collection) impure inline_ref {
+  begin_cell()
+    .store_slice(owner)
+    .store_ref(content)
+    .store_uint(index, 64)
+    .store_slice(collection)
+  .end_cell()
+  .set_data();
 }
 
-;; Transfer ownership
+;; ── Main handler ──
+
 () recv_internal(int msg_value, cell in_msg_full, slice in_msg_body) impure {
   if (in_msg_body.slice_empty?()) { return (); }
   
   slice cs = in_msg_full.begin_parse();
   int flags = cs~load_uint(4);
-  if (flags & 1) { return (); } ;; bounced
+  if (flags & 1) { return (); }
   
   slice sender_address = cs~load_msg_addr();
-  int op = in_msg_body~load_op();
+  int op = in_msg_body~load_uint(32);
+  int query_id = in_msg_body~load_uint(64);
   
+  var (owner, content, index, collection) = load_data();
+  
+  ;; ── Transfer ownership (TEP-62) ──
   if (op == op::transfer()) {
-    ;; Transfer NFT to new owner
-    ;; Requires: sender is current owner
-    ;; new_owner_address, response_address, forward_payload
-    slice new_owner = in_msg_body~load_msg_addr();
-    ;; Update owner in storage
-    ;; Emit transfer event
+    ;; Only current owner can transfer
+    if (equal_slices(sender_address, owner)) {
+      slice new_owner = in_msg_body~load_msg_addr();
+      slice response_addr = in_msg_body~load_msg_addr();
+      int custom_payload = in_msg_body~load_uint(1);
+      if (custom_payload) { in_msg_body~load_ref(); }
+      int forward_amount = in_msg_body~load_coins();
+      
+      ;; Send notification to new owner if forward_amount > 0
+      if (forward_amount > 0) {
+        var fwd_msg = begin_cell()
+          .store_uint(0x10, 6)
+          .store_slice(new_owner)
+          .store_coins(forward_amount)
+          .store_uint(0, 1)
+          .store_uint(0, 1)
+          .store_uint(0x8b771735, 32)  ;; report_static_data
+          .store_uint(query_id, 64)
+          .store_uint(index, 256)
+          .store_slice(collection)
+          .end_cell();
+        send_raw_message(fwd_msg, 0);
+      }
+      
+      ;; Update owner
+      save_data(new_owner, content, index, collection);
+      
+      ;; Return excess to response address
+      int excess = msg_value - forward_amount;
+      if (excess > 0) {
+        var ret_msg = begin_cell()
+          .store_uint(0x10, 6)
+          .store_slice(response_addr)
+          .store_coins(excess)
+          .store_uint(0, 1)
+          .store_uint(0, 1)
+          .store_uint(0xd53276db, 32)  ;; excesses
+          .store_uint(query_id, 64)
+          .end_cell();
+        send_raw_message(ret_msg, 64);
+      }
+    }
     return ();
   }
+  
+  ;; ── Get static data (TEP-62) ──
+  if (op == op::get_static_data()) {
+    var msg = begin_cell()
+      .store_uint(0x10, 6)
+      .store_slice(sender_address)
+      .store_coins(0)
+      .store_uint(0, 1)
+      .store_uint(0, 1)
+      .store_uint(op::report_static_data(), 32)
+      .store_uint(query_id, 64)
+      .store_uint(index, 256)
+      .store_slice(collection)
+      .end_cell();
+    send_raw_message(msg, 64);
+    return ();
+  }
+  
+  ;; ── Transfer ownership (deploy message from collection) ──
+  if (op == op::transfer_ownership()) {
+    ;; This is the initial ownership transfer from collection deploy
+    ;; sender should be the collection contract
+    if (equal_slices(sender_address, collection)) {
+      ;; Already has owner from state init, just return excess
+      var ret_msg = begin_cell()
+        .store_uint(0x10, 6)
+        .store_slice(owner)
+        .store_coins(msg_value - min_storage())
+        .store_uint(0, 1)
+        .store_uint(0, 1)
+        .store_uint(0xd53276db, 32)
+        .store_uint(query_id, 64)
+        .end_cell();
+      send_raw_message(ret_msg, 64);
+    }
+    return ();
+  }
+  
+  return ();
+}
+
+;; ── Get methods (TEP-62) ──
+
+(int, int, slice, slice, cell) get_nft_data() method_id {
+  var (owner, content, index, collection) = load_data();
+  return (0, index, collection, owner, content);
 }
