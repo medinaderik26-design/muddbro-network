@@ -90,9 +90,9 @@ export async function getG0Wallet() {
   const ton = await import("npm:@ton/ton@15.0.0");
   const walletId = {
     networkGlobalId: G0_WALLET_CONFIG.networkGlobalId,
-    context: { workchain: G0_WALLET_CONFIG.workchain, walletVersion: "v5r1", subwalletNumber: G0_WALLET_CONFIG.subwalletNumber },
+    context: { workchain: G0_WALLET_CONFIG.workchain, walletVersion: "v5r1" as const, subwalletNumber: G0_WALLET_CONFIG.subwalletNumber },
   };
-  const wallet = ton.WalletContractV5R1.create({ workchain: G0_WALLET_CONFIG.workchain, publicKey: pubKey, walletId });
+  const wallet = ton.WalletContractV5R1.create({ workchain: G0_WALLET_CONFIG.workchain, publicKey: pubKey, walletId: walletId as any });
   return { wallet, pubKey, secretKey, ton };
 }
 

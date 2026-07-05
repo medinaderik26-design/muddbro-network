@@ -95,7 +95,7 @@ cell build_item_state_init(int item_index, slice owner_addr, cell item_content, 
       
       var msg = begin_cell()
         .store_uint(0x18, 6)
-        .store_uint(workchain(), 11)
+        .store_uint(0x400, 11)
         .store_uint(item_addr_hash, 256)
         .store_coins(msg_value)
         .store_uint(1, 1)
@@ -128,7 +128,7 @@ cell build_item_state_init(int item_index, slice owner_addr, cell item_content, 
         
         var msg = begin_cell()
           .store_uint(0x18, 6)
-          .store_uint(workchain(), 11)
+          .store_uint(0x400, 11)
           .store_uint(item_addr_hash, 256)
           .store_coins(msg_value / count)
           .store_uint(1, 1)
@@ -224,7 +224,7 @@ cell get_nft_address_by_index(int index) method_id {
   
   int addr_hash = cell_hash(state_init);
   return begin_cell()
-    .store_uint(workchain(), 11)
+    .store_uint(0x400, 11)
     .store_uint(addr_hash, 256)
     .end_cell();
 }

@@ -75,25 +75,24 @@ int equal_slices(slice a, slice b) asm "SDEQ";
       save_data(new_owner, content, index, collection);
       
       ;; Return excess to response address
-      int excess = msg_value - forward_amount;
-      if (excess > 0) {
-        var ret_msg = begin_cell()
-          .store_uint(0x10, 6)
-          .store_slice(response_addr)
-          .store_coins(excess)
-          .store_uint(0, 1)
-          .store_uint(0, 1)
-          .store_uint(0xd53276db, 32)  ;; excesses
-          .store_uint(query_id, 64)
-          .end_cell();
-        send_raw_message(ret_msg, 64);
-      }
+      raw_reserve(min_storage(), 0);  ;; Reserve storage fee
+      var ret_msg = begin_cell()
+        .store_uint(0x10, 6)
+        .store_slice(response_addr)
+        .store_coins(0)
+        .store_uint(0, 1)
+        .store_uint(0, 1)
+        .store_uint(0xd53276db, 32)  ;; excesses
+        .store_uint(query_id, 64)
+        .end_cell();
+      send_raw_message(ret_msg, 64);  ;; mode 64 = carry remaining
     }
     return ();
   }
   
   ;; ── Get static data (TEP-62) ──
   if (op == op::get_static_data()) {
+    raw_reserve(min_storage(), 0);
     var msg = begin_cell()
       .store_uint(0x10, 6)
       .store_slice(sender_address)
@@ -114,17 +113,18 @@ int equal_slices(slice a, slice b) asm "SDEQ";
     ;; This is the initial ownership transfer from collection deploy
     ;; sender should be the collection contract
     if (equal_slices(sender_address, collection)) {
-      ;; Already has owner from state init, just return excess
+      ;; Reserve storage fee, return excess to owner
+      raw_reserve(min_storage(), 0);  ;; Reserve 0.02 TON for storage
       var ret_msg = begin_cell()
         .store_uint(0x10, 6)
         .store_slice(owner)
-        .store_coins(msg_value - min_storage())
+        .store_coins(0)               ;; 0 — mode 64 carries the rest
         .store_uint(0, 1)
         .store_uint(0, 1)
-        .store_uint(0xd53276db, 32)
+        .store_uint(0xd53276db, 32)   ;; excesses
         .store_uint(query_id, 64)
         .end_cell();
-      send_raw_message(ret_msg, 64);
+      send_raw_message(ret_msg, 64);  ;; mode 64 = carry remaining
     }
     return ();
   }
