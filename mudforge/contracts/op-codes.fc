@@ -1,0 +1,19 @@
+;; MudForge NFT Op Codes
+;; Standard TEP-62 operation codes
+
+int op::transfer() asm "0x5fcc3d1e PUSHINT";
+int op::transfer_ownership() asm "0x59fcc0b7 PUSHINT";
+int op::get_static_data() asm "0x2fcb26a2 PUSHINT";
+int op::report_static_data() asm "0x8b771735 PUSHINT";
+int op::get_nft_data() asm "0x0f3a5a4e PUSHINT";
+int op::nft_data() asm "0x6c21c407 PUSHINT";
+int op::mint() asm "0x249cbfa1 PUSHINT";
+int op::batch_mint() asm "0x7362d09c PUSHINT";
+int op::change_admin() asm "0x26aa0f46 PUSHINT";
+int op::royalty_params() asm "0x6f4414d6 PUSHINT";
+int op::edit_royalty_params() asm "0x4ee80f97 PUSHINT";
+
+;; MudForge marketplace specific
+int op::list_for_sale() asm "0x1a2b3c4d PUSHINT";
+int op::cancel_sale() asm "0x2b3c4d5e PUSHINT";
+int op::buy_nft() asm "0x3c4d5e6f PUSHINT";
