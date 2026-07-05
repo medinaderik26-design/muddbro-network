@@ -1,0 +1,16 @@
+{
+  "name": "Sun-Forged Molten Crown #0001",
+  "description": "A crown of living lava that has never cooled since the world's first forging. Legend says it was worn by the first Sun-Forged king, and it burns brightest for the one true heir to wear it next. The rarest gear in all of MudForge.",
+  "image": "https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/d38196aa1_image.jpg",
+  "external_url": "https://muddbro.network/nft/sun-forged-molten-crown/0001",
+  "attributes": [
+    {"trait_type": "Category", "value": "Helmet"},
+    {"trait_type": "Rarity", "value": "Genesis Prime"},
+    {"trait_type": "Tribe Affinity", "value": "Sun-Forged"},
+    {"trait_type": "Mining Power", "value": 70},
+    {"trait_type": "Durability", "value": 100},
+    {"trait_type": "Special Ability", "value": "Eternal Flame"},
+    {"trait_type": "Companion Bonus", "value": 25},
+    {"trait_type": "Racing Bonus", "value": 12}
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Void-Touched Oracle #0010",
+  "description": "Obsidian and gold rune-carved, with a single pearl-white eye that sees across the boundary of stars. This helm is not made — it was found, already waiting, in the deepest chamber ever mapped.",
+  "image": "https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/dfc70da83_image.jpg",
+  "external_url": "https://muddbro.network/nft/void-touched-oracle/0010",
+  "attributes": [
+    {"trait_type": "Category", "value": "Helmet"},
+    {"trait_type": "Rarity", "value": "Genesis"},
+    {"trait_type": "Tribe Affinity", "value": "Void-Touched"},
+    {"trait_type": "Mining Power", "value": 55},
+    {"trait_type": "Durability", "value": 96},
+    {"trait_type": "Special Ability", "value": "Oracle's Gaze"},
+    {"trait_type": "Companion Bonus", "value": 20},
+    {"trait_type": "Racing Bonus", "value": 8}
+  ]
+}

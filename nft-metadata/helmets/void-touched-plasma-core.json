@@ -1,0 +1,16 @@
+{
+  "name": "Void-Touched Plasma Core #0009",
+  "description": "Wreathed in living plasma that never dims, this helm channels raw void energy straight into the wearer's senses. Few can bear its power for long — those who can are never the same.",
+  "image": "https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/a107f23c6_image.jpg",
+  "external_url": "https://muddbro.network/nft/void-touched-plasma-core/0009",
+  "attributes": [
+    {"trait_type": "Category", "value": "Helmet"},
+    {"trait_type": "Rarity", "value": "Mythic"},
+    {"trait_type": "Tribe Affinity", "value": "Void-Touched"},
+    {"trait_type": "Mining Power", "value": 45},
+    {"trait_type": "Durability", "value": 92},
+    {"trait_type": "Special Ability", "value": "Plasma Surge"},
+    {"trait_type": "Companion Bonus", "value": 15},
+    {"trait_type": "Racing Bonus", "value": 6}
+  ]
+}

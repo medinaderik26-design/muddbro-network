@@ -1,0 +1,16 @@
+{
+  "name": "Bone-Singer's Ember Helm #0002",
+  "description": "A weathered miner's helm carved with bone fragments, kept lit by a single sacred candle. Favored by Hollow-Kin who sing to the dead veins to find the living ore.",
+  "image": "https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/2bcbd5cc4_image.jpg",
+  "external_url": "https://muddbro.network/nft/bone-singers-ember-helm/0002",
+  "attributes": [
+    {"trait_type": "Category", "value": "Helmet"},
+    {"trait_type": "Rarity", "value": "Uncommon"},
+    {"trait_type": "Tribe Affinity", "value": "Hollow-Kin"},
+    {"trait_type": "Mining Power", "value": 12},
+    {"trait_type": "Durability", "value": 55},
+    {"trait_type": "Special Ability", "value": "Bone Song"},
+    {"trait_type": "Companion Bonus", "value": 3},
+    {"trait_type": "Racing Bonus", "value": 0}
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Hollow-Kin Rune Visor #0003",
+  "description": "A sleek tactical visor etched with living runes that glow along the seams. Standard-issue for Hollow-Kin scouts who move unseen through the deep shafts.",
+  "image": "https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/9267d333c_image.jpg",
+  "external_url": "https://muddbro.network/nft/hollow-kin-rune-visor/0003",
+  "attributes": [
+    {"trait_type": "Category", "value": "Helmet"},
+    {"trait_type": "Rarity", "value": "Rare"},
+    {"trait_type": "Tribe Affinity", "value": "Hollow-Kin"},
+    {"trait_type": "Mining Power", "value": 18},
+    {"trait_type": "Durability", "value": 65},
+    {"trait_type": "Special Ability", "value": "Echo Vision"},
+    {"trait_type": "Companion Bonus", "value": 6},
+    {"trait_type": "Racing Bonus", "value": 3}
+  ]
+}

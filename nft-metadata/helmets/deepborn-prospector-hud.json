@@ -1,0 +1,16 @@
+{
+  "name": "Deepborn Prospector HUD #0004",
+  "description": "A rugged tactical helm with a heads-up display that scans stone for hidden mineral veins in real time. The workhorse of every serious Deepborn miner.",
+  "image": "https://media.base44.com/images/public/6a4020251d35ee93ec909dfa/4819aa9fc_image.jpg",
+  "external_url": "https://muddbro.network/nft/deepborn-prospector-hud/0004",
+  "attributes": [
+    {"trait_type": "Category", "value": "Helmet"},
+    {"trait_type": "Rarity", "value": "Rare"},
+    {"trait_type": "Tribe Affinity", "value": "Deepborn"},
+    {"trait_type": "Mining Power", "value": 22},
+    {"trait_type": "Durability", "value": 68},
+    {"trait_type": "Special Ability", "value": "Vein Scan"},
+    {"trait_type": "Companion Bonus", "value": 4},
+    {"trait_type": "Racing Bonus", "value": 0}
+  ]
+}
