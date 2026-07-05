@@ -4,7 +4,7 @@
 
 import { TELEGRAM_RINGMINE_TOKEN, GROQ_API_KEY, GROQ_API_URL, checkRateLimit, isValidTelegramId } from "../config.ts";
 
-const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN_2_2") || TELEGRAM_RINGMINE_TOKEN || "";
+const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN_5") || Deno.env.get("TELEGRAM_BOT_TOKEN_2_2") || TELEGRAM_RINGMINE_TOKEN || "";
 if (!BOT_TOKEN) {
   console.error("FATAL: TELEGRAM_BOT_TOKEN_2_2 not set. Bot will not function.");
 }
