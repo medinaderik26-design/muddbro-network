@@ -271,7 +271,7 @@ Deno.serve(async (req: Request) => {
 
 async function fetchHTML() {
   try {
-    const resp = await fetch("https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/425a474eb_ringmine_game.html", { cache: "no-store" });
+    const resp = await fetch("https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/e7adfa5b7_ringmine_game.html", { cache: "no-store" });
     if (resp.ok) return await resp.text();
   } catch(e) {}
   return "<h1>Loading Ring Mine...</h1><p>If this persists, please restart the bot.</p>";
