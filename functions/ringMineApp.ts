@@ -175,7 +175,7 @@ Deno.serve(async (req: Request) => {
         if (!walletAddress) {
           return new Response(JSON.stringify({ ok: false, error: "Missing wallet_address" }), { headers: { "Content-Type": "application/json" } });
         }
-        const validAddress = /^[UE0]Q[A-Za-z0-9_\-]{46,48}$/.test(walletAddress);
+        const validAddress = /^[UE0k]Q[A-Za-z0-9_\-]{46,48}$/.test(walletAddress);
         if (!validAddress) {
           return new Response(JSON.stringify({ ok: false, error: "Invalid TON address" }), { headers: { "Content-Type": "application/json" } });
         }

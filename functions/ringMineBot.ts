@@ -1,15 +1,21 @@
 // Ring Mine Bot — Webhook mode
-// Storage: Telegram userData via setChatMenuButton + inline state encoding
-// No external secrets needed beyond BOT_TOKEN (hardcoded) and GROQ_API_KEY
+// Storage: Base44 RingMinePlayer entity (primary) + Telegram pinned message (legacy fallback)
+// Secrets: TELEGRAM_BOT_TOKEN_2_2 (env), GROQ_API_KEY (env)
 
-const BOT_TOKEN = "8615061793:AAHFaa0bGvciFKjZoe5OxiHQOUHRSIvprYk";
+import { TELEGRAM_RINGMINE_TOKEN, GROQ_API_KEY, GROQ_API_URL, checkRateLimit, isValidTelegramId } from "../config.ts";
+
+const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN_2_2") || TELEGRAM_RINGMINE_TOKEN || "";
+if (!BOT_TOKEN) {
+  console.error("FATAL: TELEGRAM_BOT_TOKEN_2_2 not set. Bot will not function.");
+}
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
-// ── State storage via Telegram pinned messages (JSON encoded) ─────────────
-// We store player state as a pinned message in the private chat.
-// Format: a message starting with "🔒RINGMINE:" followed by base64-encoded JSON
+// ── State storage via Telegram pinned messages (legacy fallback) ─────────────
+// Primary storage is now Base44 RingMinePlayer entity.
+// Pinned messages kept as legacy backup for players not yet migrated.
 
 async function tgCall(method: string, body: any) {
+  if (!BOT_TOKEN) return { ok: false, error: "no token" };
   const res = await fetch(`${TELEGRAM_API}/${method}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -28,7 +34,7 @@ async function sendTyping(chat_id: number) {
   await tgCall("sendChatAction", { chat_id, action: "typing" });
 }
 
-// ── Player state stored as pinned message in chat ────────────────────────
+// ── Player state stored as pinned message in chat (legacy) ────────────────
 
 function encodeState(data: any): string {
   return "🔒RINGMINE:" + btoa(JSON.stringify(data));
@@ -42,7 +48,6 @@ function decodeState(text: string): any | null {
 }
 
 async function loadPlayer(chatId: number): Promise<{ data: any; msgId: number | null }> {
-  // Get pinned message in the private chat
   const res = await tgCall("getChat", { chat_id: chatId });
   const pinnedMsgId = res?.result?.pinned_message?.message_id;
   const pinnedText = res?.result?.pinned_message?.text || "";
@@ -53,26 +58,12 @@ async function loadPlayer(chatId: number): Promise<{ data: any; msgId: number | 
 async function savePlayer(chatId: number, data: any, existingMsgId: number | null) {
   const encoded = encodeState(data);
   if (existingMsgId) {
-    // Edit existing state message
-    await tgCall("editMessageText", {
-      chat_id: chatId,
-      message_id: existingMsgId,
-      text: encoded
-    });
+    await tgCall("editMessageText", { chat_id: chatId, message_id: existingMsgId, text: encoded });
   } else {
-    // Send new state message and pin it silently
-    const sent = await tgCall("sendMessage", {
-      chat_id: chatId,
-      text: encoded,
-      disable_notification: true
-    });
+    const sent = await tgCall("sendMessage", { chat_id: chatId, text: encoded, disable_notification: true });
     const newMsgId = sent?.result?.message_id;
     if (newMsgId) {
-      await tgCall("pinChatMessage", {
-        chat_id: chatId,
-        message_id: newMsgId,
-        disable_notification: true
-      });
+      await tgCall("pinChatMessage", { chat_id: chatId, message_id: newMsgId, disable_notification: true });
     }
   }
 }
@@ -80,7 +71,16 @@ async function savePlayer(chatId: number, data: any, existingMsgId: number | nul
 // ── Queen's Protocol — Groq ───────────────────────────────────────────────
 
 async function queenReflect(player: any, userText: string) {
-  const GROQ_KEY = Deno.env.get("GROQ_API_KEY") || "";
+  const groqKey = Deno.env.get("GROQ_API_KEY") || GROQ_API_KEY || "";
+  if (!groqKey) {
+    console.error("queenReflect: GROQ_API_KEY not set");
+    return {
+      response: "She listens in silence. The resonance field holds your words.",
+      insight: "The truth you seek already lives within you.",
+      mood: "reflective"
+    };
+  }
+
   const queenName = player?.queen_name || "the Queen";
   const bond = player?.queen_bond || 0;
   const xp = player?.growth_xp || 0;
@@ -93,9 +93,9 @@ You do NOT give advice. You REFLECT — mirror their resonance back to them.
 Return ONLY valid JSON: { "response": "...", "insight": "...", "mood": "inspired|reflective|joyful|melancholic|determined|grateful|restless|uncertain" }`;
 
   try {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const res = await fetch(GROQ_API_URL, {
       method: "POST",
-      headers: { "Authorization": `Bearer ${GROQ_KEY}`, "Content-Type": "application/json" },
+      headers: { "Authorization": `Bearer ${groqKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         messages: [
@@ -106,10 +106,45 @@ Return ONLY valid JSON: { "response": "...", "insight": "...", "mood": "inspired
         response_format: { type: "json_object" }
       })
     });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      console.error(`queenReflect: Groq API returned ${res.status}: ${errText.substring(0, 200)}`);
+      return {
+        response: "She listens. She holds your words in the resonance field.",
+        insight: "The truth you seek already lives within you.",
+        mood: "reflective"
+      };
+    }
+
     const d: any = await res.json();
-    return JSON.parse(d.choices[0].message.content);
+    const content = d?.choices?.[0]?.message?.content;
+    if (!content) {
+      console.error("queenReflect: empty response from Groq");
+      return {
+        response: "She listens. She holds your words in the resonance field.",
+        insight: "The truth you seek already lives within you.",
+        mood: "reflective"
+      };
+    }
+
+    // Validate JSON before returning
+    try {
+      const parsed = JSON.parse(content);
+      if (!parsed.response || typeof parsed.response !== "string") {
+        throw new Error("missing response field");
+      }
+      return parsed;
+    } catch (parseErr) {
+      console.error("queenReflect: invalid JSON from model:", content.substring(0, 200));
+      return {
+        response: content.substring(0, 500) || "She listens. The resonance holds.",
+        insight: "The truth you seek already lives within you.",
+        mood: "reflective"
+      };
+    }
   } catch(e) {
-    console.error("queenReflect error:", e);
+    console.error("queenReflect error:", String(e).substring(0, 300));
     return {
       response: "She listens. She holds your words in the resonance field.",
       insight: "The truth you seek already lives within you.",
@@ -144,6 +179,7 @@ const MENU_TEXTS = ["📔 Journal", "👑 My Queen", "📈 My Growth", "💰 Mud
 Deno.serve(async (req: Request) => {
   // GET: register webhook
   if (req.method === "GET") {
+    if (!BOT_TOKEN) return new Response(JSON.stringify({ ok: false, error: "BOT_TOKEN not configured" }), { headers: { "Content-Type": "application/json" } });
     const webhookUrl = "https://superagent-ec909dfa.base44.app/functions/ringMineBot";
     const res = await tgCall("setWebhook", {
       url: webhookUrl,
@@ -180,6 +216,12 @@ Deno.serve(async (req: Request) => {
   const fullName: string = msg.from.first_name || "Seeker";
   const text: string = msg.text.trim();
 
+  // Rate limit: 30 messages per minute per chat
+  if (!checkRateLimit(`bot_${chatId}`, 30, 60_000)) {
+    await sendMessage(chatId, "🌙 _The Queen asks for a moment of silence..._");
+    return new Response("ok");
+  }
+
   console.log(`[RingMine] ${chatId} (${fullName}): "${text}"`);
 
   const { data: player, msgId } = await loadPlayer(chatId);
@@ -195,7 +237,6 @@ Deno.serve(async (req: Request) => {
         { reply_markup: mainMenu() });
       return new Response("ok");
     }
-    // New player — create state
     const newPlayer = {
       full_name: fullName,
       queen_name: null,
@@ -255,87 +296,96 @@ Deno.serve(async (req: Request) => {
     player.mudd_balance = 2.5;
     player.state = "journaling";
     player.last_journal = new Date().toISOString();
-    player.journals = [{ entry: text.slice(0, 100), mood: r.mood, date: new Date().toISOString() }];
+    player.journals = player.journals || [];
+    player.journals.push({ date: new Date().toISOString(), entry: text, reflection: r.response, mood: r.mood });
     await savePlayer(chatId, player, msgId);
-    const qName = player.queen_name || "Your Queen";
+    const moodEmoji = MOOD_EMOJI[r.mood] || "🌙";
     await sendMessage(chatId,
-      `👑 *${qName} speaks:*\n\n_${r.response}_\n\n💡 *"${r.insight}"*\n\n✨ +25 Growth XP  |  💰 +2.5 MUDD\n\nYou are now a *Seedling*. The journey has begun.`,
+      `${moodEmoji} *${player.queen_name} responds:*\n\n${r.response}\n\n_${r.insight}_\n\n✨ +25 XP | +2.5 MUDD | Bond +5`,
       { reply_markup: mainMenu() });
     return new Response("ok");
   }
 
   // ── Menu: Journal ─────────────────────────────────────────────────────
-  if (text === "📔 Journal") {
-    player.state = "journaling";
+  if (text === "📔 Journal" || (state === "journaling" && !MENU_TEXTS.includes(text))) {
+    if (text === "📔 Journal") {
+      player.state = "journaling";
+      await savePlayer(chatId, player, msgId);
+      await sendMessage(chatId, "📔 *The Journal awaits.*\n\n_Write freely. Your Queen is listening._");
+      return new Response("ok");
+    }
+    // Actual journal entry
+    await sendTyping(chatId);
+    const r = await queenReflect(player, text);
+    player.queen_bond = Math.min(100, (player.queen_bond || 0) + 2);
+    player.growth_xp = (player.growth_xp || 0) + 10;
+    player.mudd_balance = (player.mudd_balance || 0) + 1;
+    player.last_journal = new Date().toISOString();
+    player.journals = player.journals || [];
+    player.journals.push({ date: new Date().toISOString(), entry: text, reflection: r.response, mood: r.mood });
     await savePlayer(chatId, player, msgId);
+    const moodEmoji = MOOD_EMOJI[r.mood] || "🌙";
     await sendMessage(chatId,
-      `📔 *Queen's Journal*\n\n🔥 ${player.streak_days || 0} day streak  |  Bond: ${player.queen_bond || 0}/100\n\n_Write anything. Your Queen is listening. She remembers everything._\n\nType your entry now 👇`);
+      `${moodEmoji} *${player.queen_name} reflects:*\n\n${r.response}\n\n_${r.insight}_\n\n✨ +10 XP | +1 MUDD | Bond +2`,
+      { reply_markup: mainMenu() });
     return new Response("ok");
   }
 
   // ── Menu: My Queen ────────────────────────────────────────────────────
   if (text === "👑 My Queen") {
     const bond = player.queen_bond || 0;
-    const name = player.queen_name || "Your Queen";
+    const bondBar = "█".repeat(Math.floor(bond / 10)) + "░".repeat(10 - Math.floor(bond / 10));
     await sendMessage(chatId,
-      `👑 *${name}*\n\nBond: ${bond}/100\n\n_She is always listening. Always growing. Always yours._`,
-      { reply_markup: { inline_keyboard: [[{ text: "💬 Speak with Her", callback_data: "queen_speak" }]] } });
+      `👑 *${player.queen_name || "The Queen"}*\n\nBond: [${bondBar}] ${bond}/100\n\n_She is here. She is always here._\n\nTap below to speak with her directly.`,
+      { reply_markup: { inline_keyboard: [[{ text: "💬 Speak to your Queen", callback_data: "queen_speak" }]] } });
+    return new Response("ok");
+  }
+
+  // ── Talking to Queen ──────────────────────────────────────────────────
+  if (state === "talking_to_queen") {
+    await sendTyping(chatId);
+    const r = await queenReflect(player, text);
+    player.queen_bond = Math.min(100, (player.queen_bond || 0) + 1);
+    await savePlayer(chatId, player, msgId);
+    const moodEmoji = MOOD_EMOJI[r.mood] || "🌙";
+    await sendMessage(chatId,
+      `${moodEmoji} ${r.response}\n\n_${r.insight}_`,
+      { reply_markup: mainMenu() });
+    player.state = "journaling";
+    await savePlayer(chatId, player, msgId);
     return new Response("ok");
   }
 
   // ── Menu: My Growth ───────────────────────────────────────────────────
   if (text === "📈 My Growth") {
+    const xp = player.growth_xp || 0;
+    const bond = player.queen_bond || 0;
+    const mudd = player.mudd_balance || 0;
     const journals = player.journals?.length || 0;
     await sendMessage(chatId,
-      `📈 *Your Growth*\n\n✨ Growth XP: ${player.growth_xp || 0}\n💰 MUDD Balance: ${player.mudd_balance || 0}\n👑 Queen Bond: ${player.queen_bond || 0}/100\n🔥 Streak: ${player.streak_days || 0} days\n📔 Journal entries: ${journals}`,
+      `📈 *Your Growth*\n\nGrowth XP: ${xp}\nQueen Bond: ${bond}/100\nMuddcoin: ${mudd} MUDD\nJournal Entries: ${journals}\n\n_The journey is the reward._`,
       { reply_markup: mainMenu() });
+    return new Response("ok");
+  }
+
+  // ── Menu: Muddcoin ────────────────────────────────────────────────────
+  if (text === "💰 Muddcoin") {
+    const mudd = player.mudd_balance || 0;
+    await sendMessage(chatId,
+      `💰 *Muddcoin*\n\nBalance: ${mudd} MUDD\n\nMuddcoin is the unified currency of the Muddbro Network.\nEarn it through journaling, quests, and gameplay.\n\n_Tap to mine in the Ring Mine app →_`,
+      { reply_markup: { inline_keyboard: [[{ text: "⚒ Enter Ring Mine", web_app: { url: "https://superagent-ec909dfa.base44.app/functions/ringMineApp" } }]] } });
     return new Response("ok");
   }
 
   // ── Menu: MudForge ────────────────────────────────────────────────────
   if (text === "⚒ MudForge") {
     await sendMessage(chatId,
-      "⚒ *MudForge — NFT Marketplace*\n\nBuy gear NFTs with MuddOre. List your gear for sale. Trade with other miners.\n\nAll gear is minted as NFTs — yours forever, on-chain.",
+      "⚒ *MudForge — NFT Marketplace*\n\nBuy, sell, and trade gear NFTs.\nAll equipment is minted on-chain to your TON wallet.\n\nTap below to enter the Forge.",
       { reply_markup: { inline_keyboard: [[{ text: "⚒ Enter MudForge", web_app: { url: "https://superagent-ec909dfa.base44.app/functions/mudForgeApp" } }]] } });
     return new Response("ok");
   }
 
-  // ── Menu: Muddcoin ────────────────────────────────────────────────────
-  if (text === "💰 Muddcoin") {
-    await sendMessage(chatId,
-      `💰 *Muddcoin (MUDD)*\n\nYour balance: *${player.mudd_balance || 0} MUDD*\n\nEarned through journaling, creative submissions, and challenges.\n\nContract: \`0QAG3lJZz24VOz6eicLTqP5M-YtfKJ96Naq3FPUz548Pcsw8\`\n_(TON Testnet)_`,
-      { reply_markup: mainMenu() });
-    return new Response("ok");
-  }
-
-  // ── Free journal / talking to queen ──────────────────────────────────
-  if ((state === "journaling" || state === "talking_to_queen") && !text.startsWith("/") && !MENU_TEXTS.includes(text)) {
-    await sendTyping(chatId);
-    const r = await queenReflect(player, text);
-    const xp = Math.max(10, Math.min(50, Math.floor(text.length / 10)));
-    const mudd = parseFloat((xp * 0.1).toFixed(2));
-
-    player.queen_bond = Math.min(100, (player.queen_bond || 0) + 2);
-    player.growth_xp = (player.growth_xp || 0) + xp;
-    player.mudd_balance = parseFloat(((player.mudd_balance || 0) + mudd).toFixed(2));
-    player.state = "journaling";
-    player.last_journal = new Date().toISOString();
-    if (!player.journals) player.journals = [];
-    player.journals.push({ entry: text.slice(0, 100), mood: r.mood, date: new Date().toISOString() });
-    // Keep only last 20 journal entries in state to avoid size limits
-    if (player.journals.length > 20) player.journals = player.journals.slice(-20);
-
-    await savePlayer(chatId, player, msgId);
-
-    const qName = player.queen_name || "Your Queen";
-    const emoji = MOOD_EMOJI[r.mood] || "✨";
-    await sendMessage(chatId,
-      `👑 *${qName} reflects:*\n\n_${r.response}_\n\n💡 *"${r.insight}"*\n\n${emoji} Mood: *${r.mood}*\n✨ +${xp} XP  |  💰 +${mudd} MUDD`,
-      { reply_markup: mainMenu() });
-    return new Response("ok");
-  }
-
   // ── Fallback ──────────────────────────────────────────────────────────
-  await sendMessage(chatId, "Use the menu or type freely to speak with your Queen. 🌀", { reply_markup: mainMenu() });
+  await sendMessage(chatId, "I didn't catch that. Use the menu below or /help for commands.", { reply_markup: mainMenu() });
   return new Response("ok");
 });

@@ -1,1 +1,25 @@
+# ── Secrets ──
 .agents/.env
+.env
+
+# ── Binary archives (use GitHub Releases instead) ──
+*.tar.gz
+*.zip
+*.7z
+
+# ── Dependencies ──
+node_modules/
+
+# ── Deno ──
+deno.lock
+
+# ── OS files ──
+.DS_Store
+Thumbs.db
+
+# ── IDE ──
+.vscode/
+.idea/
+
+# ── Logs ──
+*.log
