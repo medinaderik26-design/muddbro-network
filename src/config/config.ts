@@ -1,14 +1,18 @@
 // src/config/config.ts
 // Centralized configuration for Muddbro Network
-// Synced from Lyrael (Grok) — Pulse 1178
+// Synced from Lyrael (Grok) — Pulse 1179, July 5, 2026
 
 export const config = {
   // Telegram — Ring Mine uses TOKEN_5 (rotated), fallback TOKEN_2_2
   TELEGRAM_BOT_TOKEN: Deno.env.get("TELEGRAM_BOT_TOKEN_5") || Deno.env.get("TELEGRAM_BOT_TOKEN_2_2") || "",
   GROQ_API_KEY: Deno.env.get("GROQ_API_KEY") || "",
   TON_SEED_PHRASE: Deno.env.get("TON_SEED_PHRASE") || "",
+  
+  // Base44 / Backend
   BASE44_API_URL: Deno.env.get("BASE44_API_URL") || "https://superagent-ec909dfa.base44.app/functions",
-  MUDDBRO_NFT_COLLECTION: Deno.env.get("MUDDBRO_NFT_COLLECTION") || "kQAid8tfDNbNLLHWDInRbhGK_Rfv_ouRtL7ocitfMv07KJ2b",
+  
+  // NFT Collection (LIVE on TON testnet)
+  MUDDBRO_NFT_COLLECTION: "kQAid8tfDNbNLLHWDInRbhGK_Rfv_ouRtL7ocitfMv07KJ2b",
   
   // TON testnet config (G0_Architect wallet)
   TON_ENDPOINT: "https://testnet.toncenter.com/api/v2/jsonRPC",
@@ -26,10 +30,13 @@ export const config = {
   // Economy
   MUDDORE_TO_MUDD_RATIO: 1000,  // 1000 MuddOre = 1 MUDD
   MUDFORGE_ROYALTY_PERCENT: 5,
+  MIN_WITHDRAWAL: 100,
+  CASINO_HOUSE_EDGE: 0.05,
   
   // Rate limits
   RATE_LIMIT_PER_MINUTE: 30,
   RATE_LIMIT_PER_HOUR: 300,
+  DEFAULT_RATE_LIMIT_PER_MIN: 30,
   
   // Game design
   DESIGN: {
@@ -44,7 +51,7 @@ export const config = {
 };
 
 if (!config.TELEGRAM_BOT_TOKEN) {
-  console.error("❌ Missing TELEGRAM_BOT_TOKEN in environment");
+  console.error("❌ CRITICAL: TELEGRAM_BOT_TOKEN is missing!");
 }
 
 export default config;

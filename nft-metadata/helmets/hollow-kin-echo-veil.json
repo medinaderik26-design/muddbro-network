@@ -1,8 +1,8 @@
 {
   "name": "Hollow-Kin Echo Veil #0089",
-  "description": "Stealth-focused helmet with echo crystal that reveals hidden veins.",
+  "description": "A stealth-focused helmet favored by Hollow-Kin miners. The embedded echo crystal reveals hidden veins through sound.",
   "image": "https://cdn.muddbro.network/nft/gear/helmets/hollow-kin-echo-veil-rare.png",
-  "external_url": "https://muddbro.network/nft/hollow-kin-echo-veil-0089",
+  "external_url": "https://ringmine.app/items/hollow-kin-echo-veil/0089",
   "attributes": [
     {"trait_type": "Category", "value": "Helmet"},
     {"trait_type": "Rarity", "value": "Rare"},
@@ -11,6 +11,7 @@
     {"trait_type": "Durability", "value": 85},
     {"trait_type": "Special Ability", "value": "Echo Vision"},
     {"trait_type": "Companion Bonus", "value": 5},
-    {"trait_type": "Racing Bonus", "value": 3}
+    {"trait_type": "Racing Bonus", "value": 3},
+    {"trait_type": "Upgrade Level", "value": 2}
   ]
 }
