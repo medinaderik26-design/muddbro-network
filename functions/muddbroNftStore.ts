@@ -21,6 +21,8 @@ const RARITY_COLOR: Record<string, string> = {
 
 const COLLECTION_ADDRESS = "kQAid8tfDNbNLLHWDInRbhGK_Rfv_ouRtL7ocitfMv07KJ2b";
 const G0_WALLET = "0QAG3lJZz24VOz6eicLTqP5M-YtfKJ96Naq3FPUz548Pcsw8";
+const MARKET_FEE_BPS = 500; // 5% platform fee on all marketplace sales
+const HOUSE_TELEGRAM_ID = "muddbro_house";
 
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "POST, GET, OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "Content-Type": "application/json" };
 
@@ -178,9 +180,22 @@ Deno.serve(async (req: Request) => {
 
         await base44.asServiceRole.entities.RingMinePlayer.update(player.id, { mudd_balance: balance - listing.price_mudd });
 
+        // 5% platform fee goes to the MuddBro Forge house treasury, seller gets the rest
+        const feeAmount = Math.floor(listing.price_mudd * MARKET_FEE_BPS / 10000);
+        const sellerAmount = listing.price_mudd - feeAmount;
+
         const sellers = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: listing.seller_telegram_id });
         if (sellers && sellers.length > 0) {
-          await base44.asServiceRole.entities.RingMinePlayer.update(sellers[0].id, { mudd_balance: (sellers[0].mudd_balance || 0) + listing.price_mudd });
+          await base44.asServiceRole.entities.RingMinePlayer.update(sellers[0].id, { mudd_balance: (sellers[0].mudd_balance || 0) + sellerAmount });
+        }
+
+        if (feeAmount > 0) {
+          const houseAccounts = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: HOUSE_TELEGRAM_ID });
+          if (houseAccounts && houseAccounts.length > 0) {
+            await base44.asServiceRole.entities.RingMinePlayer.update(houseAccounts[0].id, { mudd_balance: (houseAccounts[0].mudd_balance || 0) + feeAmount });
+          } else {
+            await base44.asServiceRole.entities.RingMinePlayer.create({ telegram_id: HOUSE_TELEGRAM_ID, username: "MuddBro Treasury", full_name: "MuddBro Forge House Account", mudd_balance: feeAmount, mudd_ore_balance: 0 });
+          }
         }
 
         await base44.asServiceRole.entities.MudForgeListing.update(listingId, { status: "sold", buyer_telegram_id: telegramId, sold_at: new Date().toISOString() });
@@ -472,6 +487,7 @@ async function loadMarket(){
         '<div class="seller-tag">seller: @'+(l.seller_username||l.seller_telegram_id)+'</div>' +
         '<div class="card-stats">Mining <b>+'+l.mining_bonus+'</b> · Companion <b>+'+l.companion_bonus+'</b> · Racing <b>+'+l.racing_bonus+'</b></div>' +
         '<div class="card-price">'+(l.price_mudd||0).toLocaleString()+' MUDD</div>' +
+        '<div style="font-size:8px;color:rgba(160,240,255,0.3);margin-bottom:6px">5% platform fee included</div>' +
         (mine ? '<button class="btn danger" onclick="cancelListing(\\''+l.id+'\\')">Cancel Listing</button>' : '<button class="btn gold" onclick="buyListing(\\''+l.id+'\\')">Buy Now</button>') +
       '</div></div>';
   }).join('');
@@ -514,7 +530,7 @@ async function loadVault(){
 }
 
 async function promptList(gearId){
-  const price = prompt('List price in MUDD:');
+  const price = prompt('List price in MUDD (5% platform fee applies — you receive 95%):');
   if (!price || isNaN(Number(price))) return;
   const r = await api('list_gear', { gear_id: gearId, price_mudd: Number(price) });
   if (r.ok) { toast('Listed on the market!'); loadVault(); loadMarket(); }
