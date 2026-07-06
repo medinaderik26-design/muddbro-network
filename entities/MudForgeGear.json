@@ -16,10 +16,13 @@
       "type": "string",
       "enum": [
         "Common",
+        "Uncommon",
         "Rare",
         "Epic",
         "Legendary",
-        "Mythic"
+        "Mythic",
+        "Genesis",
+        "Genesis Prime"
       ]
     },
     "gear_slot": {
@@ -51,6 +54,24 @@
     },
     "listing_id": {
       "type": "string"
+    },
+    "catalog_key": {
+      "type": "string",
+      "description": "Slug of the Genesis catalog item this NFT was minted from, e.g. sun-forged-molten-crown"
+    },
+    "mint_tx_status": {
+      "type": "string",
+      "enum": [
+        "none",
+        "requested",
+        "minted",
+        "failed"
+      ],
+      "default": "none"
+    },
+    "owner_wallet_address": {
+      "type": "string",
+      "description": "TON wallet address the on-chain NFT was/will be sent to"
     }
   },
   "type": "object",

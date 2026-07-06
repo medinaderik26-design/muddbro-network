@@ -25,10 +25,13 @@
       "type": "string",
       "enum": [
         "Common",
+        "Uncommon",
         "Rare",
         "Epic",
         "Legendary",
-        "Mythic"
+        "Mythic",
+        "Genesis",
+        "Genesis Prime"
       ]
     },
     "gear_slot": {
@@ -62,6 +65,10 @@
     },
     "sold_at": {
       "type": "string"
+    },
+    "nft_address": {
+      "type": "string",
+      "description": "On-chain NFT item address if this listing is a real minted NFT"
     }
   },
   "type": "object",
