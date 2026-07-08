@@ -438,6 +438,13 @@ body{background-image:radial-gradient(circle at 50% 50%,rgba(100,200,255,0.08) 0
 
   <div id="s-forge" class="screen">
     <div class="fg-scroll">
+      <div class="fg-mudforge-banner" style="margin:0 0 14px;padding:14px 16px;border-radius:10px;background:linear-gradient(135deg,rgba(160,240,255,0.08),rgba(255,215,0,0.06));border:1px solid rgba(160,240,255,0.25);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:180px">
+          <div style="color:#ffd700;font-weight:700;font-size:0.95em;letter-spacing:0.03em">MUDFORGE // ON-CHAIN NFT MARKET</div>
+          <div style="color:#8fa3bf;font-size:0.8em;margin-top:2px">Mint real TEP-62 gear NFTs on TON testnet &middot; trade with other players</div>
+        </div>
+        <button onclick="openMudForgeMarket()" style="background:#a0f0ff;color:#05050a;border:none;padding:9px 16px;border-radius:8px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap">Open Market &rarr;</button>
+      </div>
       <div class="fg-tabs">
         <button class="fg-tab on" data-fgtab="shop" onclick="forgeTab('shop')">Shop</button>
         <button class="fg-tab" data-fgtab="mygear" onclick="forgeTab('mygear')">My Gear</button>
@@ -1500,6 +1507,15 @@ updateUI();
 if(S.companion) {
   var c0 = COMPANIONS.find(function(x){return x.id===S.companion});
   if(c0) queenImg.src = c0.img;
+}
+
+var MUDFORGE_STORE_URL = "https://muddbro-market-2hr9b1ywkqxv.medinaderik26-design.deno.net/";
+function openMudForgeMarket() {
+  if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
+    Telegram.WebApp.openLink(MUDFORGE_STORE_URL);
+  } else {
+    window.open(MUDFORGE_STORE_URL, '_blank');
+  }
 }
 
 // Telegram WebApp
