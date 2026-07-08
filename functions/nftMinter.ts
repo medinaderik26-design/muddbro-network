@@ -1,5 +1,8 @@
 // NFT Minter — Direct deploy from G0 wallet (bypasses collection contract)
 // Mints TEP-62 NFT items using the MudForge item code
+// NOTE: seqno/balance fetched via tonapi.io REST (not toncenter TonClient) to avoid
+// aggressive rate-limiting on this function's outbound IP. BOC is built here and
+// returned for the caller to send via toncenter from a different IP (sandbox curl).
 
 (globalThis as any).window = globalThis;
 (globalThis as any).document = { createElement: () => ({ style: {}, setAttribute: () => {}, appendChild: () => {} }) };
@@ -7,16 +10,30 @@
 import { Buffer } from "node:buffer";
 (globalThis as any).Buffer = Buffer;
 
-const TON_TESTNET_ENDPOINT = "https://testnet.toncenter.com/api/v2/jsonRPC";
 const G0_WALLET_BOUNCEABLE = "kQAG3lJZz24VOz6eicLTqP5M-YtfKJ96Naq3FPUz548PcpH5";
+const G0_WALLET_NONBOUNCE = "0QAG3lJZz24VOz6eicLTqP5M-YtfKJ96Naq3FPUz548Pcsw8";
 
 // NFT item code (compiled FunC → BOC, base64)
 const NFT_ITEM_CODE_BOC = "te6ccgECCAEAAWwAART/APSkE/S88sgLAQIBYgIDA+rQMiHHAJFb4NDTAwFxsJFb4PpAMAHTH9M/2zyCEF/MPR5ScLrjAjIzghAvyyaiUlC6jjQxM4IJMS0AcPsCghCLdxc1cCCAEMjLBVAHzxYh+gIWywAVywAUyx/LPxLL/wHPFsmAQPsA4DKCEFn8wLcUuuMCXwQHBAUBEaEfn7Z44IKIBwcB/DZQYscFjvMB+kD6QNMAAZLUMd76ADAgwgCOK4IQi3cXNXAggBDIywUmzxZQBPoCE8sAEssAyx9SQMs/UjDL/yXPFslw+wCRMOJQNEVQ2zyCCTEtAHD7AoIQ1TJ223AggBDIywVQBM8WIfoCE8sAEssAyx/LP8mAQPsAkl8F4gYAZhPHBY4rggkxLQBw+wKCENUydttwIIAQyMsFUATPFiH6AhPLABLLAMsfyz/JgED7AJFb4gAeyFAEzxYSzMs/Ac8Wye1UABbtRND6QNTTP/pAMA==";
 
 // Collection address (raw format for cell storage)
-const COLLECTION_RAW = "0:b46e7d56cc9963a9955b0ad706e2f4087f06dfa38d886f62";
+const COLLECTION_RAW = "0:2277cb5f0cd6cd2cb1d60c89d16e118afd17effe8b91b4bee8722b5f32fd3b28";
 
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "POST, GET, OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "Content-Type": "application/json" };
+
+async function tonapiSeqno(): Promise<number> {
+  const resp = await fetch(`https://testnet.tonapi.io/v2/blockchain/accounts/${G0_WALLET_NONBOUNCE}/methods/seqno`);
+  const data = await resp.json();
+  if (!data.success) throw new Error("seqno fetch failed: " + JSON.stringify(data));
+  const raw = data.stack?.[0]?.num;
+  return parseInt(raw, 16);
+}
+
+async function tonapiBalance(): Promise<number> {
+  const resp = await fetch(`https://testnet.tonapi.io/v2/blockchain/accounts/${G0_WALLET_BOUNCEABLE}`);
+  const data = await resp.json();
+  return Number(data.balance || 0);
+}
 
 async function getG0Wallet() {
   let seed = Deno.env.get("TON_SEED_PHRASE") || "";
@@ -43,47 +60,33 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const action = body.action || "";
 
-    // ── Status check ──
+    // ── Status check (uses tonapi.io REST, not toncenter, to avoid rate limit) ──
     if (action === "status") {
-      const { wallet, ton } = await getG0Wallet();
-      const { TonClient } = ton;
-      const client = new TonClient({ endpoint: TON_TESTNET_ENDPOINT });
-      const contract = client.open(wallet);
-      const seqno = await contract.getSeqno();
-      const balanceResp = await fetch(`https://testnet.tonapi.io/v2/blockchain/accounts/${G0_WALLET_BOUNCEABLE}`);
-      const balanceData = await balanceResp.json();
+      const seqno = await tonapiSeqno();
+      const balance = await tonapiBalance();
       return new Response(JSON.stringify({
         ok: true,
         seqno,
-        balance_ton: Number(balanceData.balance || 0) / 1e9,
-        can_mint: Number(balanceData.balance || 0) > 50_000_000,
+        balance_ton: balance / 1e9,
+        can_mint: balance > 50_000_000,
         item_code_loaded: true
       }), { headers: corsHeaders });
     }
 
-    // ── Mint single NFT ──
-    if (action === "mint") {
-      const { wallet, secretKey, ton } = await getG0Wallet();
-      const { TonClient, toNano, beginCell, Cell, Address, storeStateInit, storeMessage } = ton;
+    // ── Build mint BOC (does NOT send it — caller sends via toncenter from a different IP) ──
+    if (action === "build_mint_boc") {
+      const { secretKey, ton } = await getG0Wallet();
+      const { wallet } = await getG0Wallet();
+      const { toNano, beginCell, Cell, Address, storeStateInit, storeMessage, internal } = ton;
 
-      // Parse item code from BOC
       const itemCodeCell = Cell.fromBase64(NFT_ITEM_CODE_BOC);
 
-      // Get wallet seqno
-      const client = new TonClient({ endpoint: TON_TESTNET_ENDPOINT });
-      const walletContract = client.open(wallet);
-      const seqno = await walletContract.getSeqno();
-
-      // Check balance
-      const balanceResp = await fetch(`https://testnet.tonapi.io/v2/blockchain/accounts/${G0_WALLET_BOUNCEABLE}`);
-      const balanceData = await balanceResp.json();
-      const balance = Number(balanceData.balance || 0);
+      const seqno = typeof body.seqno === "number" ? body.seqno : await tonapiSeqno();
+      const balance = await tonapiBalance();
       if (balance < 50_000_000) {
         return new Response(JSON.stringify({ ok: false, error: "Insufficient TON balance", balance_ton: balance / 1e9, needed: 0.05 }), { headers: corsHeaders });
       }
 
-      // Build NFT metadata content cell
-      // Format: uint8 version (1) + remaining bits = JSON string
       const metadata = body.metadata || {};
       const metadataJson = JSON.stringify({
         name: metadata.name || `MudForge Gear #${body.item_index || 0}`,
@@ -93,18 +96,13 @@ Deno.serve(async (req: Request) => {
       });
 
       const contentCell = beginCell()
-        .storeUint(1, 8) // content version
+        .storeUint(1, 8)
         .storeStringTail(metadataJson)
         .endCell();
 
-      // Build collection address cell
       const collectionAddr = Address.parseRaw(COLLECTION_RAW);
-
-      // Build owner address
       const ownerAddr = Address.parseFriendly(G0_WALLET_BOUNCEABLE).address;
 
-      // Build NFT item data cell
-      // Layout: owner_addr (MsgAddress) + content (ref) + item_index (uint64) + collection_addr (MsgAddress)
       const dataCell = beginCell()
         .storeAddress(ownerAddr)
         .storeRef(contentCell)
@@ -112,74 +110,48 @@ Deno.serve(async (req: Request) => {
         .storeAddress(collectionAddr)
         .endCell();
 
-      // Build state init
-      const stateInit = {
-        code: itemCodeCell,
-        data: dataCell
-      };
+      const stateInit = { code: itemCodeCell, data: dataCell };
 
-      // Compute item address
       const stateInitCell = beginCell().storeWritable(storeStateInit(stateInit)).endCell();
       const itemHash = stateInitCell.hash();
       const itemAddress = new Address(0, itemHash);
 
-      // Build transfer_ownership body
-      // op: 0x59fcc0b7, query_id: 0, new_owner: ownerAddr
       const transferBody = beginCell()
         .storeUint(0x59fcc0b7, 32) // op::transfer_ownership
-        .storeUint(0, 64) // query_id
-        .storeAddress(ownerAddr) // new_owner
+        .storeUint(0, 64)
+        .storeAddress(ownerAddr)
         .endCell();
 
-      // Build the transfer from wallet
-      const transfer = walletContract.createTransfer({
-        seqno,
-        secretKey,
-        messages: [{
-          address: itemAddress.toString({ testOnly: true, bounceable: true }),
-          amount: toNano("0.05"),
-          body: transferBody,
-          init: stateInit
-        }]
+      const outMsg = internal({
+        to: itemAddress.toString({ testOnly: true, bounceable: true }),
+        value: toNano("0.05"),
+        body: transferBody,
+        init: stateInit,
+        bounce: true
       });
 
-      // Build external message and serialize
+      const transfer = wallet.createTransfer({
+        seqno,
+        secretKey,
+        messages: [outMsg]
+      });
+
       const extMsg = {
-        info: {
-          type: 'external-in' as const,
-          dest: wallet.address,
-          importFee: 0n
-        },
+        info: { type: 'external-in' as const, dest: wallet.address, importFee: 0n },
         body: transfer
       };
 
       const bocCell = beginCell().storeWritable(storeMessage(extMsg as any)).endCell();
       const bocBase64 = bocCell.toBoc().toString("base64");
 
-      // Send via toncenter
-      const sendResp = await fetch(TON_TESTNET_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: 1,
-          jsonrpc: "2.0",
-          method: "sendBoc",
-          params: { boc: bocBase64 }
-        })
-      });
-      const sendResult = await sendResp.json();
-
-      const success = sendResult.ok || sendResult.result?.code === 0;
       return new Response(JSON.stringify({
-        ok: success,
+        ok: true,
+        boc: bocBase64,
         item_address: itemAddress.toString({ testOnly: true, bounceable: false }),
         item_address_bounceable: itemAddress.toString({ testOnly: true, bounceable: true }),
         item_index: body.item_index || 0,
         seqno_used: seqno,
-        metadata_name: metadata.name || "",
-        image_url: metadata.image || "",
-        tx_status: success ? "sent" : "failed",
-        tx_error: success ? "" : JSON.stringify(sendResult.error || sendResult)
+        metadata_name: metadata.name || ""
       }), { headers: corsHeaders });
     }
 
