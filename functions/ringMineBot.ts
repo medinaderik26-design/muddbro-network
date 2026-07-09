@@ -2,7 +2,22 @@
 // Storage: Base44 RingMinePlayer entity (primary) + Telegram pinned message (legacy fallback)
 // Secrets: TELEGRAM_BOT_TOKEN_2_2 (env), GROQ_API_KEY (env)
 
-import { TELEGRAM_RINGMINE_TOKEN, GROQ_API_KEY, GROQ_API_URL, checkRateLimit, isValidTelegramId } from "../config.ts";
+// ── Inlined config (function bundler can't reach outside its own file) ────
+const TELEGRAM_RINGMINE_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN_2_2") || "";
+const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") || "";
+const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+function checkRateLimit(key: string, maxRequests: number = 30, windowMs: number = 60_000): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= maxRequests;
+}
 
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN_5") || Deno.env.get("TELEGRAM_BOT_TOKEN_2_2") || TELEGRAM_RINGMINE_TOKEN || "";
 if (!BOT_TOKEN) {
@@ -34,7 +49,53 @@ async function sendTyping(chat_id: number) {
   await tgCall("sendChatAction", { chat_id, action: "typing" });
 }
 
-// ── Player state stored as pinned message in chat (legacy) ────────────────
+// ── Voice journaling — Telegram voice note → Groq Whisper transcription ────
+
+async function transcribeVoiceNote(fileId: string): Promise<string | null> {
+  try {
+    const fileInfo = await tgCall("getFile", { file_id: fileId });
+    const filePath = fileInfo?.result?.file_path;
+    if (!filePath) {
+      console.error("transcribeVoiceNote: no file_path from getFile", JSON.stringify(fileInfo));
+      return null;
+    }
+    const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
+    const audioRes = await fetch(fileUrl);
+    if (!audioRes.ok) {
+      console.error("transcribeVoiceNote: failed to download audio", audioRes.status);
+      return null;
+    }
+    const audioBuffer = await audioRes.arrayBuffer();
+
+    const groqKey = Deno.env.get("GROQ_API_KEY") || GROQ_API_KEY || "";
+    if (!groqKey) {
+      console.error("transcribeVoiceNote: GROQ_API_KEY not set");
+      return null;
+    }
+
+    const form = new FormData();
+    form.append("file", new Blob([audioBuffer], { type: "audio/ogg" }), "voice.ogg");
+    form.append("model", "whisper-large-v3-turbo");
+    form.append("response_format", "json");
+
+    const transRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${groqKey}` },
+      body: form
+    });
+    if (!transRes.ok) {
+      const errText = await transRes.text().catch(() => "");
+      console.error("transcribeVoiceNote: Groq error", transRes.status, errText.substring(0, 200));
+      return null;
+    }
+    const transJson: any = await transRes.json();
+    const text = String(transJson?.text || "").trim();
+    return text.length > 0 ? text : null;
+  } catch (e) {
+    console.error("transcribeVoiceNote error:", String(e).substring(0, 300));
+    return null;
+  }
+}
 
 function encodeState(data: any): string {
   return "🔒RINGMINE:" + btoa(JSON.stringify(data));
@@ -210,10 +271,57 @@ Deno.serve(async (req: Request) => {
   }
 
   const msg = update?.message;
-  if (!msg?.text) return new Response("ok");
+  if (!msg) return new Response("ok");
 
   const chatId: number = msg.chat.id;
-  const fullName: string = msg.from.first_name || "Seeker";
+  const fullName: string = msg.from?.first_name || "Seeker";
+
+  // ── Voice journaling — speak instead of type ───────────────────────────
+  if (msg.voice && !msg.text) {
+    if (!checkRateLimit(`bot_${chatId}`, 30, 60_000)) {
+      await sendMessage(chatId, "🌙 _The Queen asks for a moment of silence..._");
+      return new Response("ok");
+    }
+    const { data: player, msgId } = await loadPlayer(chatId);
+    if (!player) {
+      await sendMessage(chatId, "Send /start to begin your journey in the Ring Mine. 🌀");
+      return new Response("ok");
+    }
+    await sendTyping(chatId);
+    const transcript = await transcribeVoiceNote(msg.voice.file_id);
+    if (!transcript) {
+      await sendMessage(chatId, "🌙 _The Queen couldn't quite make out that recording. Try again, or type your journal instead._");
+      return new Response("ok");
+    }
+    console.log(`[RingMine] ${chatId} (${fullName}) [voice]: "${transcript}"`);
+
+    const r = await queenReflect(player, transcript);
+    const isFirstEntry = player.state === "awaiting_intention";
+    if (isFirstEntry) {
+      player.queen_bond = 5;
+      player.growth_xp = 25;
+      player.mudd_balance = 2.5;
+    } else {
+      player.queen_bond = Math.min(100, (player.queen_bond || 0) + 2);
+      player.growth_xp = (player.growth_xp || 0) + 10;
+      player.mudd_balance = (player.mudd_balance || 0) + 1;
+    }
+    player.state = "journaling";
+    player.last_journal = new Date().toISOString();
+    player.journals = player.journals || [];
+    player.journals.push({ date: new Date().toISOString(), entry: transcript, reflection: r.response, mood: r.mood, source: "voice" });
+    await savePlayer(chatId, player, msgId);
+
+    const moodEmoji = MOOD_EMOJI[r.mood] || "🌙";
+    const rewardText = isFirstEntry ? "✨ +25 XP | +2.5 MUDD | Bond +5" : "✨ +10 XP | +1 MUDD | Bond +2";
+    await sendMessage(chatId,
+      `🎙️ _I heard you say:_ "${transcript}"\n\n${moodEmoji} *${player.queen_name || "Your Queen"} reflects:*\n\n${r.response}\n\n_${r.insight}_\n\n${rewardText}`,
+      { reply_markup: mainMenu() });
+    return new Response("ok");
+  }
+
+  if (!msg?.text) return new Response("ok");
+
   const text: string = msg.text.trim();
 
   // Rate limit: 30 messages per minute per chat
@@ -267,7 +375,7 @@ Deno.serve(async (req: Request) => {
   // ── /help ─────────────────────────────────────────────────────────────
   if (text === "/help") {
     await sendMessage(chatId,
-      "🌀 *Ring Mine — Help*\n\n/start — Begin your journey\n/help — This message\n\n📔 *Journal* — Write freely, earn XP + MUDD\n👑 *My Queen* — Speak with her directly\n📈 *My Growth* — View your stats\n💰 *Muddcoin* — Your MUDD balance\n⚒ *MudForge* — NFT gear marketplace\n/forge — Open MudForge directly\n\n_Part of the Muddbro Network_",
+      "🌀 *Ring Mine — Help*\n\n/start — Begin your journey\n/help — This message\n\n📔 *Journal* — Write freely (or send a voice note!), earn XP + MUDD\n👑 *My Queen* — Speak with her directly\n📈 *My Growth* — View your stats\n💰 *Muddcoin* — Your MUDD balance\n⚒ *MudForge* — NFT gear marketplace\n/forge — Open MudForge directly\n\n_Part of the Muddbro Network_",
       { reply_markup: mainMenu() });
     return new Response("ok");
   }
@@ -283,7 +391,7 @@ Deno.serve(async (req: Request) => {
     player.state = "awaiting_intention";
     await savePlayer(chatId, player, msgId);
     await sendMessage(chatId,
-      `✨ *${text}.*\n\nShe stirs. Recognizes herself in the name you chose.\n\n"Tell me," she says softly, "what brings you to the Ring Mine?"\n\n_Write freely. There is no wrong answer here._`);
+      `✨ *${text}.*\n\nShe stirs. Recognizes herself in the name you chose.\n\n"Tell me," she says softly, "what brings you to the Ring Mine?"\n\n_Write freely, or send a voice note. There is no wrong answer here._`);
     return new Response("ok");
   }
 
@@ -311,7 +419,7 @@ Deno.serve(async (req: Request) => {
     if (text === "📔 Journal") {
       player.state = "journaling";
       await savePlayer(chatId, player, msgId);
-      await sendMessage(chatId, "📔 *The Journal awaits.*\n\n_Write freely. Your Queen is listening._");
+      await sendMessage(chatId, "📔 *The Journal awaits.*\n\n_Write freely, or send a voice note. Your Queen is listening._");
       return new Response("ok");
     }
     // Actual journal entry
