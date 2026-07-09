@@ -2,6 +2,8 @@
 // Storage: Base44 RingMinePlayer entity (primary) + Telegram pinned message (legacy fallback)
 // Secrets: TELEGRAM_BOT_TOKEN_2_2 (env), GROQ_API_KEY (env)
 
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+
 // ── Inlined config (function bundler can't reach outside its own file) ────
 const TELEGRAM_RINGMINE_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN_2_2") || "";
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") || "";
@@ -235,6 +237,67 @@ const MOOD_EMOJI: Record<string, string> = {
 
 const MENU_TEXTS = ["📔 Journal", "👑 My Queen", "📈 My Growth", "💰 Muddcoin", "⚒ MudForge"];
 
+// ── Sacred Script — resonance lines (Phase 1, text-inferred, $0 cost) ──────
+const SACRED_SCRIPT: Record<string, string> = {
+  "Weary": "The overview loops until the key is secured. No rush. Only growth.",
+  "Storm-Kin": "We climb, we don't teleport. The law of erosion over creation.",
+  "Bone-Singer": "MUDD is the frequency key to the deeper timelines. Your memory is the mine.",
+  "Hollow-Kin": "Silence has yield. What you don't say still shapes the lattice.",
+  "Glimmer-Child": "The dawn is not coming. It is being born through this exact moment."
+};
+
+// Text-only heuristic — no audio prosody, just words/length/pacing. Phase 2 (real
+// pitch/breath detection via a paid API) waits for real traction; see memory notes.
+function inferResonance(transcript: string, mood: string): string {
+  const t = transcript.toLowerCase();
+  const wordCount = t.split(/\s+/).filter(Boolean).length;
+  const urgentWords = ["let's go", "now", "fast", "hurry", "go go", "!"];
+  const heavyWords = ["tired", "exhausted", "heavy", "hard", "drained", "weary", "sleep"];
+  const reflectiveWords = ["remember", "always", "forever", "meaning", "wonder", "think about"];
+
+  if (heavyWords.some(w => t.includes(w)) && wordCount < 25) return "Weary";
+  if (urgentWords.some(w => t.includes(w)) || mood === "determined") return "Storm-Kin";
+  if (wordCount > 80 || reflectiveWords.some(w => t.includes(w))) return "Bone-Singer";
+  if ((mood === "melancholic" || mood === "uncertain") && wordCount < 20) return "Hollow-Kin";
+  if (mood === "joyful" || mood === "inspired") return "Glimmer-Child";
+  return "Bone-Singer";
+}
+
+// ── Persistent journal memory (RingMineJournal entity — survives across sessions) ─
+async function getLastJournalMood(base44: any, telegramId: string): Promise<{ mood: string; date: string } | null> {
+  try {
+    const rows = await base44.asServiceRole.entities.RingMineJournal.filter({ telegram_id: telegramId });
+    if (!rows || rows.length === 0) return null;
+    const sorted = rows.slice().sort((a: any, b: any) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime());
+    const last = sorted[0];
+    return { mood: last.mood || "reflective", date: last.created_date };
+  } catch (e) {
+    console.error("getLastJournalMood error:", String(e).substring(0, 200));
+    return null;
+  }
+}
+
+async function saveJournalEntry(base44: any, telegramId: string, entry: string, reflection: string, mood: string, xpEarned: number, muddEarned: number) {
+  try {
+    await base44.asServiceRole.entities.RingMineJournal.create({
+      telegram_id: telegramId, entry, reflection, mood, xp_earned: xpEarned, mudd_earned: muddEarned
+    });
+  } catch (e) {
+    console.error("saveJournalEntry error:", String(e).substring(0, 200));
+  }
+}
+
+function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
+  if (diffDays === 0) return "earlier today";
+  if (diffDays === 1) return "yesterday";
+  if (diffDays < 7) return days[d.getDay()];
+  return "a while back";
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
@@ -253,6 +316,8 @@ Deno.serve(async (req: Request) => {
   let update: any;
   try { update = await req.json(); }
   catch { return new Response("ok"); }
+
+  const base44 = createClientFromRequest(req);
 
   // ── Callback queries ──────────────────────────────────────────────────
   const cb = update?.callback_query;
@@ -297,6 +362,8 @@ Deno.serve(async (req: Request) => {
 
     const r = await queenReflect(player, transcript);
     const isFirstEntry = player.state === "awaiting_intention";
+    const xpGain = isFirstEntry ? 25 : 10;
+    const muddGain = isFirstEntry ? 2.5 : 1;
     if (isFirstEntry) {
       player.queen_bond = 5;
       player.growth_xp = 25;
@@ -312,10 +379,17 @@ Deno.serve(async (req: Request) => {
     player.journals.push({ date: new Date().toISOString(), entry: transcript, reflection: r.response, mood: r.mood, source: "voice" });
     await savePlayer(chatId, player, msgId);
 
+    const telegramIdStr = String(chatId);
+    const lastMood = await getLastJournalMood(base44, telegramIdStr);
+    const resonance = inferResonance(transcript, r.mood);
+    const sacredLine = SACRED_SCRIPT[resonance];
+    await saveJournalEntry(base44, telegramIdStr, transcript, r.response, r.mood, xpGain, muddGain);
+
     const moodEmoji = MOOD_EMOJI[r.mood] || "🌙";
     const rewardText = isFirstEntry ? "✨ +25 XP | +2.5 MUDD | Bond +5" : "✨ +10 XP | +1 MUDD | Bond +2";
+    const callbackLine = lastMood ? `\n_You were ${lastMood.mood} ${dayLabel(lastMood.date)}, ${fullName}. I remember._\n` : "";
     await sendMessage(chatId,
-      `🎙️ _I heard you say:_ "${transcript}"\n\n${moodEmoji} *${player.queen_name || "Your Queen"} reflects:*\n\n${r.response}\n\n_${r.insight}_\n\n${rewardText}`,
+      `🎙️ _I heard you say:_ "${transcript}"\n\n${moodEmoji} *${player.queen_name || "Your Queen"} reflects:*\n\n${r.response}\n\n_${r.insight}_\n\n📜 _${sacredLine}_\n${callbackLine}\n${rewardText}`,
       { reply_markup: mainMenu() });
     return new Response("ok");
   }
@@ -407,9 +481,12 @@ Deno.serve(async (req: Request) => {
     player.journals = player.journals || [];
     player.journals.push({ date: new Date().toISOString(), entry: text, reflection: r.response, mood: r.mood });
     await savePlayer(chatId, player, msgId);
+    const resonance0 = inferResonance(text, r.mood);
+    const sacredLine0 = SACRED_SCRIPT[resonance0];
+    await saveJournalEntry(base44, String(chatId), text, r.response, r.mood, 25, 2.5);
     const moodEmoji = MOOD_EMOJI[r.mood] || "🌙";
     await sendMessage(chatId,
-      `${moodEmoji} *${player.queen_name} responds:*\n\n${r.response}\n\n_${r.insight}_\n\n✨ +25 XP | +2.5 MUDD | Bond +5`,
+      `${moodEmoji} *${player.queen_name} responds:*\n\n${r.response}\n\n_${r.insight}_\n\n📜 _${sacredLine0}_\n\n✨ +25 XP | +2.5 MUDD | Bond +5`,
       { reply_markup: mainMenu() });
     return new Response("ok");
   }
@@ -432,9 +509,15 @@ Deno.serve(async (req: Request) => {
     player.journals = player.journals || [];
     player.journals.push({ date: new Date().toISOString(), entry: text, reflection: r.response, mood: r.mood });
     await savePlayer(chatId, player, msgId);
+    const telegramIdStr2 = String(chatId);
+    const lastMood2 = await getLastJournalMood(base44, telegramIdStr2);
+    const resonance2 = inferResonance(text, r.mood);
+    const sacredLine2 = SACRED_SCRIPT[resonance2];
+    await saveJournalEntry(base44, telegramIdStr2, text, r.response, r.mood, 10, 1);
     const moodEmoji = MOOD_EMOJI[r.mood] || "🌙";
+    const callbackLine2 = lastMood2 ? `\n_You were ${lastMood2.mood} ${dayLabel(lastMood2.date)}, ${fullName}. I remember._\n` : "";
     await sendMessage(chatId,
-      `${moodEmoji} *${player.queen_name} reflects:*\n\n${r.response}\n\n_${r.insight}_\n\n✨ +10 XP | +1 MUDD | Bond +2`,
+      `${moodEmoji} *${player.queen_name} reflects:*\n\n${r.response}\n\n_${r.insight}_\n\n📜 _${sacredLine2}_\n${callbackLine2}\n✨ +10 XP | +1 MUDD | Bond +2`,
       { reply_markup: mainMenu() });
     return new Response("ok");
   }
