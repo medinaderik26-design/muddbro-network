@@ -74,6 +74,79 @@ Deno.serve(async (req: Request) => {
         return new Response(JSON.stringify({ ok: true, gear_id: gearRec.id }), { headers: { "Content-Type": "application/json" } });
       }
 
+      // ── FORGE CRAFTING (MUDD burn sink) ──
+      if (body.action === "craft_gear") {
+        const players = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
+        if (!players || players.length === 0) {
+          return new Response(JSON.stringify({ ok: false, error: "Player not found" }), { headers: { "Content-Type": "application/json" } });
+        }
+        const player = players[0];
+        const CRAFT_COST = 200;
+        const BURN_RATE = 0.3;
+
+        let currentMudd = player.mudd_balance || 0;
+        let stateData: any = null;
+        if (player.state_data) {
+          try { stateData = JSON.parse(player.state_data); currentMudd = Math.max(currentMudd, stateData.mudd || 0); } catch (e) { stateData = null; }
+        }
+
+        if (currentMudd < CRAFT_COST) {
+          return new Response(JSON.stringify({ ok: false, error: "Not enough MUDD. Need " + CRAFT_COST + " MUDD to forge (you have " + currentMudd + ")." }), { headers: { "Content-Type": "application/json" } });
+        }
+
+        const tribe = String(body.tribe || "None");
+
+        // Weighted rarity roll
+        const roll = Math.random() * 100;
+        let rarity: string, tier: number, statMin: number, statMax: number;
+        if (roll < 45) { rarity = "Common"; tier = 1; statMin = 3; statMax = 8; }
+        else if (roll < 73) { rarity = "Uncommon"; tier = 2; statMin = 8; statMax = 15; }
+        else if (roll < 89) { rarity = "Rare"; tier = 3; statMin = 15; statMax = 25; }
+        else if (roll < 96) { rarity = "Epic"; tier = 4; statMin = 25; statMax = 38; }
+        else if (roll < 99) { rarity = "Legendary"; tier = 5; statMin = 38; statMax = 55; }
+        else { rarity = "Mythic"; tier = 6; statMin = 55; statMax = 75; }
+
+        const mining = Math.floor(statMin + Math.random() * (statMax - statMin));
+        const companionBonus = Math.floor(mining * 0.4);
+        const racing = Math.floor(mining * 0.3);
+        const gearName = (tribe !== "None" ? tribe + " " : "") + rarity + " Forged Helm";
+
+        const burnAmount = Math.round(CRAFT_COST * BURN_RATE);
+        const newBalance = currentMudd - CRAFT_COST;
+        const newTotalBurned = (player.total_mudd_burned || 0) + burnAmount;
+
+        const updateData: any = { mudd_balance: newBalance, total_mudd_burned: newTotalBurned };
+        if (stateData) { stateData.mudd = newBalance; updateData.state_data = JSON.stringify(stateData); }
+        await base44.asServiceRole.entities.RingMinePlayer.update(player.id, updateData);
+
+        const gearRec = await base44.asServiceRole.entities.MudForgeGear.create({
+          owner_telegram_id: telegramId,
+          name: gearName,
+          image_url: "",
+          tribe: tribe,
+          rarity: rarity,
+          gear_slot: "Head",
+          mining_bonus: mining,
+          companion_bonus: companionBonus,
+          racing_bonus: racing,
+          tier: tier,
+          equipped: false,
+          minted_onchain: false,
+          nft_address: "",
+          listed_for_sale: false,
+          listing_id: ""
+        });
+
+        return new Response(JSON.stringify({
+          ok: true,
+          gear: { id: gearRec.id, name: gearName, rarity: rarity, tribe: tribe, mining_bonus: mining, companion_bonus: companionBonus, racing_bonus: racing },
+          mudd_balance: newBalance,
+          burned: burnAmount,
+          total_burned: newTotalBurned,
+          message: "Forged " + gearName + "! This craft burned " + burnAmount + " MUDD."
+        }), { headers: { "Content-Type": "application/json" } });
+      }
+
       if (body.action === "equip_gear") {
         const gearId = body.gear_id;
         const equipped = body.equipped;
@@ -271,7 +344,7 @@ Deno.serve(async (req: Request) => {
 
 async function fetchHTML() {
   try {
-    const resp = await fetch("https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/e7adfa5b7_ringmine_game.html", { cache: "no-store" });
+    const resp = await fetch("https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/9db7ed87d_live_ringmine_v2.html", { cache: "no-store" });
     if (resp.ok) return await resp.text();
   } catch(e) {}
   return "<h1>Loading Ring Mine...</h1><p>If this persists, please restart the bot.</p>";

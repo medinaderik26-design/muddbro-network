@@ -50,6 +50,11 @@
     },
     "withdrawal_history": {
       "type": "string"
+    },
+    "total_mudd_burned": {
+      "type": "number",
+      "description": "Cumulative MUDD permanently burned by this player via Forge crafting",
+      "default": 0
     }
   },
   "type": "object",
