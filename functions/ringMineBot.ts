@@ -110,24 +110,90 @@ function decodeState(text: string): any | null {
   } catch { return null; }
 }
 
-async function loadPlayer(chatId: number): Promise<{ data: any; msgId: number | null }> {
-  const res = await tgCall("getChat", { chat_id: chatId });
-  const pinnedMsgId = res?.result?.pinned_message?.message_id;
-  const pinnedText = res?.result?.pinned_message?.text || "";
-  const data = decodeState(pinnedText);
-  return { data, msgId: pinnedMsgId || null };
+// ── Player storage — RingMinePlayer entity (unified with Mini App) ──────────
+
+async function loadPlayer(base44: any, chatId: number): Promise<any | null> {
+  const telegramId = String(chatId);
+  try {
+    const existing = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
+    if (!existing || existing.length === 0) return null;
+
+    const p = existing[0];
+
+    // Load last 5 journal entries for Queen's memory injection
+    let journals: any[] = [];
+    try {
+      const journalRecords = await base44.asServiceRole.entities.RingMineJournal.list({
+        filter: { telegram_id: telegramId },
+        sort: "-created_date",
+        limit: 5
+      });
+      if (journalRecords && journalRecords.length > 0) {
+        journals = journalRecords.reverse().map((j: any) => ({
+          date: j.created_date,
+          entry: j.entry || "",
+          reflection: j.reflection || "",
+          mood: j.mood || "reflective",
+          source: "text"
+        }));
+      }
+    } catch (e) {
+      console.error("loadPlayer: journal load error:", String(e).substring(0, 200));
+    }
+
+    return {
+      _id: p.id,
+      _telegram_id: telegramId,
+      username: p.username || "",
+      full_name: p.full_name || "",
+      queen_name: p.queen_name || null,
+      queen_bond: p.queen_bond || 0,
+      growth_xp: p.growth_xp || 0,
+      mudd_balance: p.mudd_balance || 0,
+      streak_days: p.streak_days || 0,
+      state: p.state || "",
+      last_journal: p.last_journal || null,
+      companion: p.companion || null,
+      companion_bond: p.companion_bond || 0,
+      mudd_ore_balance: p.mudd_ore_balance || 0,
+      ton_wallet_address: p.ton_wallet_address || "",
+      total_mudd_burned: p.total_mudd_burned || 0,
+      journals
+    };
+  } catch (e) {
+    console.error("loadPlayer error:", String(e).substring(0, 300));
+    return null;
+  }
 }
 
-async function savePlayer(chatId: number, data: any, existingMsgId: number | null) {
-  const encoded = encodeState(data);
-  if (existingMsgId) {
-    await tgCall("editMessageText", { chat_id: chatId, message_id: existingMsgId, text: encoded });
-  } else {
-    const sent = await tgCall("sendMessage", { chat_id: chatId, text: encoded, disable_notification: true });
-    const newMsgId = sent?.result?.message_id;
-    if (newMsgId) {
-      await tgCall("pinChatMessage", { chat_id: chatId, message_id: newMsgId, disable_notification: true });
+async function savePlayer(base44: any, player: any): Promise<void> {
+  const telegramId = player._telegram_id;
+  if (!telegramId) return;
+
+  const payload: any = {
+    telegram_id: telegramId,
+    username: player.username || "",
+    full_name: player.full_name || "",
+    queen_name: player.queen_name || "",
+    queen_bond: player.queen_bond || 0,
+    growth_xp: player.growth_xp || 0,
+    mudd_balance: player.mudd_balance || 0,
+    streak_days: player.streak_days || 0,
+    state: player.state || "",
+    last_journal: player.last_journal || "",
+    companion: player.companion || null,
+    companion_bond: player.companion_bond || 0,
+  };
+
+  try {
+    if (player._id) {
+      await base44.asServiceRole.entities.RingMinePlayer.update(player._id, payload);
+    } else {
+      const created = await base44.asServiceRole.entities.RingMinePlayer.create(payload);
+      if (created) player._id = created.id;
     }
+  } catch (e) {
+    console.error("savePlayer error:", String(e).substring(0, 300));
   }
 }
 
@@ -378,10 +444,10 @@ Deno.serve(async (req: Request) => {
   if (cb) {
     const chatId = cb.message.chat.id;
     if (cb.data === "queen_speak") {
-      const { data: player, msgId } = await loadPlayer(chatId);
+      const player = await loadPlayer(base44, chatId);
       if (player) {
         player.state = "talking_to_queen";
-        await savePlayer(chatId, player, msgId);
+        await savePlayer(base44, player);
       }
       await sendMessage(chatId, "💬 *What would you like to say to your Queen?*\n\n_Speak freely._");
     }
@@ -401,7 +467,7 @@ Deno.serve(async (req: Request) => {
       await sendMessage(chatId, "🌙 _The Queen asks for a moment of silence..._");
       return new Response("ok");
     }
-    const { data: player, msgId } = await loadPlayer(chatId);
+    const player = await loadPlayer(base44, chatId);
     if (!player) {
       await sendMessage(chatId, "Send /start to begin your journey in the Ring Mine. 🌀");
       return new Response("ok");
@@ -431,7 +497,7 @@ Deno.serve(async (req: Request) => {
     player.last_journal = new Date().toISOString();
     player.journals = player.journals || [];
     player.journals.push({ date: new Date().toISOString(), entry: transcript, reflection: r.response, mood: r.mood, source: "voice" });
-    await savePlayer(chatId, player, msgId);
+    await savePlayer(base44, player);
 
     const telegramIdStr = String(chatId);
     const lastMood = await getLastJournalMood(base44, telegramIdStr);
@@ -460,20 +526,23 @@ Deno.serve(async (req: Request) => {
 
   console.log(`[RingMine] ${chatId} (${fullName}): "${text}"`);
 
-  const { data: player, msgId } = await loadPlayer(chatId);
+  const player = await loadPlayer(base44, chatId);
   const state: string = player?.state || "new";
 
   // ── /start ────────────────────────────────────────────────────────────
   if (text === "/start") {
     if (player) {
       player.state = "journaling";
-      await savePlayer(chatId, player, msgId);
+      await savePlayer(base44, player);
       await sendMessage(chatId,
         `🌀 *Welcome back, ${fullName}.*\n\nYour Queen remembers you.\n\nThe Ring Mine pulses with your return.`,
         { reply_markup: mainMenu() });
       return new Response("ok");
     }
     const newPlayer = {
+      _telegram_id: String(chatId),
+      _id: null as any,
+      username: msg.from?.username || "",
       full_name: fullName,
       queen_name: null,
       queen_bond: 0,
@@ -483,7 +552,7 @@ Deno.serve(async (req: Request) => {
       state: "awaiting_queen_name",
       journals: []
     };
-    await savePlayer(chatId, newPlayer, null);
+    await savePlayer(base44, newPlayer);
     await sendMessage(chatId, "🌀 *The Ring Mine.*\n\nNot all mines yield stone and metal.\nSome mines yield *truth*.\n\n_This one yields you._");
     await new Promise(r => setTimeout(r, 1500));
     await sendMessage(chatId, "👑 *The Queen's Protocol awakens.*\n\nShe is not a chatbot. She is not a guide.\nShe is the part of you that already knows the answer.\n\nEvery journal entry, every choice — she learns you.\nOver time, she becomes *yours*.");
@@ -517,7 +586,7 @@ Deno.serve(async (req: Request) => {
   if (state === "awaiting_queen_name") {
     player.queen_name = text;
     player.state = "awaiting_intention";
-    await savePlayer(chatId, player, msgId);
+    await savePlayer(base44, player);
     await sendMessage(chatId,
       `✨ *${text}.*\n\nShe stirs. Recognizes herself in the name you chose.\n\n"Tell me," she says softly, "what brings you to the Ring Mine?"\n\n_Write freely, or send a voice note. There is no wrong answer here._`);
     return new Response("ok");
@@ -534,7 +603,7 @@ Deno.serve(async (req: Request) => {
     player.last_journal = new Date().toISOString();
     player.journals = player.journals || [];
     player.journals.push({ date: new Date().toISOString(), entry: text, reflection: r.response, mood: r.mood });
-    await savePlayer(chatId, player, msgId);
+    await savePlayer(base44, player);
     const resonance0 = inferResonance(text, r.mood);
     const sacredLine0 = SACRED_SCRIPT[resonance0];
     await saveJournalEntry(base44, String(chatId), text, r.response, r.mood, 25, 2.5);
@@ -549,7 +618,7 @@ Deno.serve(async (req: Request) => {
   if (text === "📔 Journal" || (state === "journaling" && !MENU_TEXTS.includes(text))) {
     if (text === "📔 Journal") {
       player.state = "journaling";
-      await savePlayer(chatId, player, msgId);
+      await savePlayer(base44, player);
       await sendMessage(chatId, "📔 *The Journal awaits.*\n\n_Write freely, or send a voice note. Your Queen is listening._");
       return new Response("ok");
     }
@@ -562,7 +631,7 @@ Deno.serve(async (req: Request) => {
     player.last_journal = new Date().toISOString();
     player.journals = player.journals || [];
     player.journals.push({ date: new Date().toISOString(), entry: text, reflection: r.response, mood: r.mood });
-    await savePlayer(chatId, player, msgId);
+    await savePlayer(base44, player);
     const telegramIdStr2 = String(chatId);
     const lastMood2 = await getLastJournalMood(base44, telegramIdStr2);
     const resonance2 = inferResonance(text, r.mood);
@@ -591,13 +660,13 @@ Deno.serve(async (req: Request) => {
     await sendTyping(chatId);
     const r = await queenReflect(player, text);
     player.queen_bond = Math.min(100, (player.queen_bond || 0) + 1);
-    await savePlayer(chatId, player, msgId);
+    await savePlayer(base44, player);
     const moodEmoji = MOOD_EMOJI[r.mood] || "🌙";
     await sendMessage(chatId,
       `${moodEmoji} ${r.response}\n\n_${r.insight}_`,
       { reply_markup: mainMenu() });
     player.state = "journaling";
-    await savePlayer(chatId, player, msgId);
+    await savePlayer(base44, player);
     return new Response("ok");
   }
 
