@@ -1,60 +1,143 @@
 {
   "properties": {
-    "telegram_id": {
-      "type": "string"
-    },
-    "username": {
-      "type": "string"
-    },
-    "full_name": {
-      "type": "string"
-    },
-    "queen_name": {
-      "type": "string"
-    },
-    "queen_bond": {
-      "type": "number"
-    },
-    "growth_xp": {
-      "type": "number"
-    },
-    "mudd_balance": {
-      "type": "number"
-    },
-    "streak_days": {
-      "type": "number"
-    },
-    "state": {
-      "type": "string"
-    },
-    "state_data": {
-      "type": "string"
-    },
-    "last_journal": {
-      "type": "string"
-    },
-    "ton_wallet_address": {
-      "type": "string"
-    },
-    "mudd_ore_balance": {
-      "type": "number"
-    },
     "companion": {
       "type": "string"
     },
     "companion_bond": {
       "type": "number"
     },
-    "total_withdrawn": {
+    "growth_xp": {
       "type": "number"
     },
-    "withdrawal_history": {
+    "last_journal": {
+      "type": "string"
+    },
+    "mudd_balance": {
+      "type": "number"
+    },
+    "mudd_ore_balance": {
+      "type": "number"
+    },
+    "queen_bond": {
+      "type": "number"
+    },
+    "queen_name": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "state_data": {
+      "type": "object"
+    },
+    "streak_days": {
+      "type": "number"
+    },
+    "telegram_id": {
+      "type": "string"
+    },
+    "ton_wallet_address": {
       "type": "string"
     },
     "total_mudd_burned": {
-      "type": "number",
-      "description": "Cumulative MUDD permanently burned by this player via Forge crafting",
-      "default": 0
+      "type": "number"
+    },
+    "total_withdrawn": {
+      "type": "number"
+    },
+    "username": {
+      "type": "string"
+    },
+    "withdrawal_history": {
+      "type": "array"
+    },
+    "full_name": {
+      "type": "string"
+    },
+    "glyph_state": {
+      "enum": [
+        "Seed",
+        "Glyph",
+        "Resonant",
+        "Hyperstate",
+        "Monument"
+      ],
+      "type": "string"
+    },
+    "glyph_seeds": {
+      "items": {
+        "object": {
+          "properties": {
+            "cohesion": {
+              "type": "number"
+            },
+            "created_date": {
+              "type": "string"
+            },
+            "entry": {
+              "type": "string"
+            },
+            "journal_id": {
+              "type": "string"
+            },
+            "mood": {
+              "type": "string"
+            },
+            "resonance_count": {
+              "type": "number"
+            }
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "glyph_cohesion": {
+      "type": "number"
+    },
+    "glyph_lineage": {
+      "items": {
+        "object": {
+          "properties": {
+            "from_state": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "to_state": {
+              "type": "string"
+            },
+            "transition_date": {
+              "type": "string"
+            }
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "resonance_anchors": {
+      "items": {
+        "object": {
+          "properties": {
+            "anchor_date": {
+              "type": "string"
+            },
+            "count": {
+              "type": "number"
+            },
+            "keyword": {
+              "type": "string"
+            },
+            "strength": {
+              "type": "number"
+            }
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
     }
   },
   "type": "object",
