@@ -1,351 +1,208 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
+const HTML_URL = "https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/6cca828ba_ringmine_ui.html";
+
 Deno.serve(async (req: Request) => {
-  // ── API: load/save player state via RingMinePlayer entity ──────────────
   if (req.method === "POST") {
     try {
       const body = await req.json();
       const base44 = createClientFromRequest(req);
-      const telegramId = String(body.telegram_id || "");
-      if (!telegramId) {
-        return new Response(JSON.stringify({ error: "missing telegram_id" }), { status: 400, headers: { "Content-Type": "application/json" } });
-      }
+      const tid = String(body.telegram_id || "");
+      if (!tid) return new Response(JSON.stringify({ error: "missing telegram_id" }), { status: 400, headers: { "Content-Type": "application/json" } });
 
       if (body.action === "load") {
-        const existing = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
-        if (existing && existing.length > 0) {
-          const p = existing[0];
-          let state = null;
-          try { state = p.state_data ? JSON.parse(p.state_data) : null; } catch (e) { state = null; }
-          return new Response(JSON.stringify({ found: true, state }), { headers: { "Content-Type": "application/json" } });
-        }
+        const ex = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
+        if (ex && ex.length > 0) { let s = null; try { s = ex[0].state_data ? JSON.parse(ex[0].state_data) : null; } catch { } return new Response(JSON.stringify({ found: true, state: s }), { headers: { "Content-Type": "application/json" } }); }
         return new Response(JSON.stringify({ found: false, state: null }), { headers: { "Content-Type": "application/json" } });
       }
 
       if (body.action === "save") {
-        const state = body.state || {};
-        const existing = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
-        const payload: any = {
-          telegram_id: telegramId,
-          username: body.username || "",
-          full_name: body.full_name || "",
-          state_data: JSON.stringify(state),
-          mudd_ore_balance: state.ore || 0,
-          mudd_balance: state.mudd || 0,
-          growth_xp: state.xp || 0,
-          companion_bond: state.bond || 0,
-          streak_days: state.streak || 0,
-          companion: state.companion || null
-        };
-        if (existing && existing.length > 0) {
-          await base44.asServiceRole.entities.RingMinePlayer.update(existing[0].id, payload);
-        } else {
-          await base44.asServiceRole.entities.RingMinePlayer.create(payload);
-        }
+        const st = body.state || {};
+        const ex = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
+        const p: any = { telegram_id: tid, username: body.username || "", full_name: body.full_name || "", state_data: JSON.stringify(st), mudd_ore_balance: st.ore || 0, mudd_balance: st.mudd || 0, growth_xp: st.xp || 0, companion_bond: st.bond || 0, streak_days: st.streak || 0, companion: st.companion || null };
+        if (ex && ex.length > 0) await base44.asServiceRole.entities.RingMinePlayer.update(ex[0].id, p);
+        else await base44.asServiceRole.entities.RingMinePlayer.create(p);
         return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
       }
 
-      
-      // ── MUDFORGE API ──
-      if (body.action === "load_gear") {
-        const gear = await base44.asServiceRole.entities.MudForgeGear.filter({ owner_telegram_id: telegramId });
-        return new Response(JSON.stringify({ gear: gear || [] }), { headers: { "Content-Type": "application/json" } });
+      if (body.action === "load_glyph") {
+        const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
+        if (!ps || ps.length === 0) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
+        const p = ps[0];
+        return new Response(JSON.stringify({ ok: true, glyph_state: p.glyph_state || "Seed", glyph_cohesion: p.glyph_cohesion || 0, glyph_seeds: p.glyph_seeds || [], glyph_lineage: p.glyph_lineage || [], resonance_anchors: p.resonance_anchors || [], queen_name: p.queen_name || "", queen_bond: p.queen_bond || 0, growth_xp: p.growth_xp || 0, streak_days: p.streak_days || 0, companion: p.companion || null, mudd_balance: p.mudd_balance || 0, mudd_ore_balance: p.mudd_ore_balance || 0 }), { headers: { "Content-Type": "application/json" } });
       }
 
-      if (body.action === "buy_gear") {
-        const item = body.item;
-        const gearRec = await base44.asServiceRole.entities.MudForgeGear.create({
-          owner_telegram_id: telegramId,
-          name: item.name,
-          image_url: item.image_url || "",
-          tribe: item.tribe || "None",
-          rarity: item.rarity || "Common",
-          gear_slot: item.gear_slot || "Head",
-          mining_bonus: item.mining_bonus || 0,
-          companion_bonus: item.companion_bonus || 0,
-          racing_bonus: item.racing_bonus || 0,
-          tier: item.tier || 1,
-          equipped: false,
-          minted_onchain: false,
-          nft_address: "",
-          listed_for_sale: false,
-          listing_id: ""
-        });
-        return new Response(JSON.stringify({ ok: true, gear_id: gearRec.id }), { headers: { "Content-Type": "application/json" } });
+      if (body.action === "mine") {
+        const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
+        if (!ps || ps.length === 0) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
+        const p = ps[0];
+        const baseYield = 5 + Math.floor(Math.random() * 15);
+        const gs = p.glyph_state || "Seed";
+        let gm = 1.0;
+        switch (gs) { case "Glyph": gm = 1.02; break; case "Resonant": gm = 1.05; break; case "Hyperstate": gm = 1.10; break; case "Monument": gm = 1.20; break; }
+        let eb = 0;
+        try { const eq = await base44.asServiceRole.entities.MudForgeGear.filter({ owner_telegram_id: tid, equipped: true }); for (const g of eq) eb += (g.mining_bonus || 0); } catch { }
+        eb = eb / 100;
+        const yield_ = Math.floor(baseYield * gm * (1 + eb));
+        let ore = p.mudd_ore_balance || 0, sd: any = null;
+        if (p.state_data) { try { sd = JSON.parse(p.state_data); ore = Math.max(ore, sd.ore || 0); } catch { } }
+        const newOre = ore + yield_;
+        const ud: any = { mudd_ore_balance: newOre };
+        if (sd) { sd.ore = newOre; ud.state_data = JSON.stringify(sd); }
+        await base44.asServiceRole.entities.RingMinePlayer.update(p.id, ud);
+        return new Response(JSON.stringify({ ok: true, yield: yield_, base_yield: baseYield, glyph_bonus: Math.round((gm - 1) * 100) + "%", equip_bonus: Math.round(eb * 100) + "%", new_balance: newOre, glyph_state: gs }), { headers: { "Content-Type": "application/json" } });
       }
 
-      // ── FORGE CRAFTING (MUDD burn sink) ──
+      if (body.action === "casino_flip") {
+        const bet = Math.floor(Number(body.bet) || 0); const choice = String(body.choice || "heads");
+        if (bet < 10) return new Response(JSON.stringify({ ok: false, error: "Min bet 10" }), { headers: { "Content-Type": "application/json" } });
+        const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
+        if (!ps || ps.length === 0) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
+        const p = ps[0]; let ore = p.mudd_ore_balance || 0, sd: any = null;
+        if (p.state_data) { try { sd = JSON.parse(p.state_data); ore = Math.max(ore, sd.ore || 0); } catch { } }
+        if (ore < bet) return new Response(JSON.stringify({ ok: false, error: "Need " + bet + " ore (have " + ore + ")" }), { headers: { "Content-Type": "application/json" } });
+        const result = Math.random() < 0.5 ? "heads" : "tails"; const won = result === choice;
+        const payout = won ? bet * 2 : 0; const newOre = ore - bet + payout;
+        const ud: any = { mudd_ore_balance: newOre }; if (sd) { sd.ore = newOre; ud.state_data = JSON.stringify(sd); }
+        await base44.asServiceRole.entities.RingMinePlayer.update(p.id, ud);
+        return new Response(JSON.stringify({ ok: true, won, result, bet, payout, new_balance: newOre, message: won ? "🪙 " + result.toUpperCase() + "! Won " + payout + " ore!" : "🪙 " + result.toUpperCase() + ". Lost " + bet + " ore." }), { headers: { "Content-Type": "application/json" } });
+      }
+
+      if (body.action === "casino_slots") {
+        const bet = Math.floor(Number(body.bet) || 0);
+        if (bet < 20) return new Response(JSON.stringify({ ok: false, error: "Min bet 20" }), { headers: { "Content-Type": "application/json" } });
+        const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
+        if (!ps || ps.length === 0) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
+        const p = ps[0]; let ore = p.mudd_ore_balance || 0, sd: any = null;
+        if (p.state_data) { try { sd = JSON.parse(p.state_data); ore = Math.max(ore, sd.ore || 0); } catch { } }
+        if (ore < bet) return new Response(JSON.stringify({ ok: false, error: "Need " + bet + " ore (have " + ore + ")" }), { headers: { "Content-Type": "application/json" } });
+        const syms = ["💎","⛏️","🔥","🌀","👑","💀"];
+        const reels = [syms[Math.floor(Math.random()*6)], syms[Math.floor(Math.random()*6)], syms[Math.floor(Math.random()*6)]];
+        let payout = 0, msg = "";
+        if (reels[0] === reels[1] && reels[1] === reels[2]) { const m: any = { "💎":10,"👑":8,"🔥":6,"🌀":5,"⛏️":4,"💀":3 }; payout = bet * (m[reels[0]] || 3); msg = "🎰 JACKPOT! Three " + reels[0] + "! Won " + payout + " ore!"; }
+        else if (reels[0] === reels[1] || reels[1] === reels[2] || reels[0] === reels[2]) { payout = Math.floor(bet * 1.5); msg = "🎰 Two of a kind! Won " + payout + " ore."; }
+        else { msg = "🎰 No match. Lost " + bet + " ore."; }
+        const newOre = ore - bet + payout;
+        const ud: any = { mudd_ore_balance: newOre }; if (sd) { sd.ore = newOre; ud.state_data = JSON.stringify(sd); }
+        await base44.asServiceRole.entities.RingMinePlayer.update(p.id, ud);
+        return new Response(JSON.stringify({ ok: true, reels, bet, payout, new_balance: newOre, message: msg }), { headers: { "Content-Type": "application/json" } });
+      }
+
+      if (body.action === "load_gear") { const g = await base44.asServiceRole.entities.MudForgeGear.filter({ owner_telegram_id: tid }); return new Response(JSON.stringify({ gear: g || [] }), { headers: { "Content-Type": "application/json" } }); }
+      if (body.action === "equip_gear") { await base44.asServiceRole.entities.MudForgeGear.update(body.gear_id, { equipped: body.equipped }); return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } }); }
+      if (body.action === "load_market") { const l = await base44.asServiceRole.entities.MudForgeListing.filter({ status: "active" }); return new Response(JSON.stringify({ listings: l || [] }), { headers: { "Content-Type": "application/json" } }); }
+      if (body.action === "load_equipped_gear") { const g = await base44.asServiceRole.entities.MudForgeGear.filter({ owner_telegram_id: tid, equipped: true }); return new Response(JSON.stringify({ gear: g || [] }), { headers: { "Content-Type": "application/json" } }); }
+
       if (body.action === "craft_gear") {
-        const players = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
-        if (!players || players.length === 0) {
-          return new Response(JSON.stringify({ ok: false, error: "Player not found" }), { headers: { "Content-Type": "application/json" } });
-        }
-        const player = players[0];
-        const CRAFT_COST = 200;
-        const BURN_RATE = 0.3;
-
-        let currentMudd = player.mudd_balance || 0;
-        let stateData: any = null;
-        if (player.state_data) {
-          try { stateData = JSON.parse(player.state_data); currentMudd = Math.max(currentMudd, stateData.mudd || 0); } catch (e) { stateData = null; }
-        }
-
-        if (currentMudd < CRAFT_COST) {
-          return new Response(JSON.stringify({ ok: false, error: "Not enough MUDD. Need " + CRAFT_COST + " MUDD to forge (you have " + currentMudd + ")." }), { headers: { "Content-Type": "application/json" } });
-        }
-
-        const tribe = String(body.tribe || "None");
-
-        // Weighted rarity roll
-        const roll = Math.random() * 100;
-        let rarity: string, tier: number, statMin: number, statMax: number;
-        if (roll < 45) { rarity = "Common"; tier = 1; statMin = 3; statMax = 8; }
-        else if (roll < 73) { rarity = "Uncommon"; tier = 2; statMin = 8; statMax = 15; }
-        else if (roll < 89) { rarity = "Rare"; tier = 3; statMin = 15; statMax = 25; }
-        else if (roll < 96) { rarity = "Epic"; tier = 4; statMin = 25; statMax = 38; }
-        else if (roll < 99) { rarity = "Legendary"; tier = 5; statMin = 38; statMax = 55; }
-        else { rarity = "Mythic"; tier = 6; statMin = 55; statMax = 75; }
-
-        const mining = Math.floor(statMin + Math.random() * (statMax - statMin));
-        const companionBonus = Math.floor(mining * 0.4);
-        const racing = Math.floor(mining * 0.3);
-        const gearName = (tribe !== "None" ? tribe + " " : "") + rarity + " Forged Helm";
-
-        const burnAmount = Math.round(CRAFT_COST * BURN_RATE);
-        const newBalance = currentMudd - CRAFT_COST;
-        const newTotalBurned = (player.total_mudd_burned || 0) + burnAmount;
-
-        const updateData: any = { mudd_balance: newBalance, total_mudd_burned: newTotalBurned };
-        if (stateData) { stateData.mudd = newBalance; updateData.state_data = JSON.stringify(stateData); }
-        await base44.asServiceRole.entities.RingMinePlayer.update(player.id, updateData);
-
-        const gearRec = await base44.asServiceRole.entities.MudForgeGear.create({
-          owner_telegram_id: telegramId,
-          name: gearName,
-          image_url: "",
-          tribe: tribe,
-          rarity: rarity,
-          gear_slot: "Head",
-          mining_bonus: mining,
-          companion_bonus: companionBonus,
-          racing_bonus: racing,
-          tier: tier,
-          equipped: false,
-          minted_onchain: false,
-          nft_address: "",
-          listed_for_sale: false,
-          listing_id: ""
-        });
-
-        return new Response(JSON.stringify({
-          ok: true,
-          gear: { id: gearRec.id, name: gearName, rarity: rarity, tribe: tribe, mining_bonus: mining, companion_bonus: companionBonus, racing_bonus: racing },
-          mudd_balance: newBalance,
-          burned: burnAmount,
-          total_burned: newTotalBurned,
-          message: "Forged " + gearName + "! This craft burned " + burnAmount + " MUDD."
-        }), { headers: { "Content-Type": "application/json" } });
-      }
-
-      if (body.action === "equip_gear") {
-        const gearId = body.gear_id;
-        const equipped = body.equipped;
-        await base44.asServiceRole.entities.MudForgeGear.update(gearId, { equipped });
-        return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
-      }
-
-      if (body.action === "load_market") {
-        const listings = await base44.asServiceRole.entities.MudForgeListing.filter({ status: "active" });
-        return new Response(JSON.stringify({ listings: listings || [] }), { headers: { "Content-Type": "application/json" } });
+        const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
+        if (!ps || ps.length === 0) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
+        const p = ps[0]; const CC = 200, BR = 0.3;
+        let mudd = p.mudd_balance || 0, sd: any = null;
+        if (p.state_data) { try { sd = JSON.parse(p.state_data); mudd = Math.max(mudd, sd.mudd || 0); } catch { } }
+        if (mudd < CC) return new Response(JSON.stringify({ ok: false, error: "Need " + CC + " MUDD (have " + mudd + ")" }), { headers: { "Content-Type": "application/json" } });
+        const tribe = String(body.tribe || "None"); const roll = Math.random() * 100;
+        let rar: string, t: number, mn: number, mx: number;
+        if (roll < 45) { rar = "Common"; t = 1; mn = 3; mx = 8; } else if (roll < 73) { rar = "Uncommon"; t = 2; mn = 8; mx = 15; } else if (roll < 89) { rar = "Rare"; t = 3; mn = 15; mx = 25; } else if (roll < 96) { rar = "Epic"; t = 4; mn = 25; mx = 38; } else if (roll < 99) { rar = "Legendary"; t = 5; mn = 38; mx = 55; } else { rar = "Mythic"; t = 6; mn = 55; mx = 75; }
+        const mi = Math.floor(mn + Math.random() * (mx - mn)), cb = Math.floor(mi * 0.4), rc = Math.floor(mi * 0.3);
+        const gn = (tribe !== "None" ? tribe + " " : "") + rar + " Forged Helm";
+        const burn = Math.round(CC * BR), nb = mudd - CC, ntb = (p.total_mudd_burned || 0) + burn;
+        const ud: any = { mudd_balance: nb, total_mudd_burned: ntb }; if (sd) { sd.mudd = nb; ud.state_data = JSON.stringify(sd); }
+        await base44.asServiceRole.entities.RingMinePlayer.update(p.id, ud);
+        const gr = await base44.asServiceRole.entities.MudForgeGear.create({ owner_telegram_id: tid, name: gn, image_url: "", tribe, rarity: rar, gear_slot: "Head", mining_bonus: mi, companion_bonus: cb, racing_bonus: rc, tier: t, equipped: false, minted_onchain: false, nft_address: "", listed_for_sale: false, listing_id: "" });
+        return new Response(JSON.stringify({ ok: true, gear: { id: gr.id, name: gn, rarity: rar, tribe, mining_bonus: mi, companion_bonus: cb, racing_bonus: rc }, mudd_balance: nb, burned: burn, total_burned: ntb, message: "Forged " + gn + "! Burned " + burn + " MUDD." }), { headers: { "Content-Type": "application/json" } });
       }
 
       if (body.action === "list_gear") {
-        const gearId = body.gear_id;
-        const priceMuddOre = body.price_mudd_ore;
-        const gear = await base44.asServiceRole.entities.MudForgeGear.filter({ id: gearId });
-        if (!gear || gear.length === 0) {
-          return new Response(JSON.stringify({ error: "gear not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
-        }
-        const g = gear[0];
-        if (String(g.owner_telegram_id) !== telegramId) {
-          return new Response(JSON.stringify({ error: "not owner" }), { status: 403, headers: { "Content-Type": "application/json" } });
-        }
-        const listing = await base44.asServiceRole.entities.MudForgeListing.create({
-          seller_telegram_id: telegramId,
-          seller_username: body.username || "",
-          nft_name: g.name,
-          nft_image_url: g.image_url || "",
-          nft_collection: "MudForge Genesis",
-          nft_item_index: 0,
-          tribe: g.tribe || "None",
-          rarity: g.rarity || "Common",
-          gear_slot: g.gear_slot || "Head",
-          mining_bonus: g.mining_bonus || 0,
-          companion_bonus: g.companion_bonus || 0,
-          racing_bonus: g.racing_bonus || 0,
-          price_mudd: Math.floor(priceMuddOre / 1000),
-          price_mudd_ore: priceMuddOre,
-          status: "active",
-          buyer_telegram_id: "",
-          sold_at: ""
-        });
-        await base44.asServiceRole.entities.MudForgeGear.update(gearId, { listed_for_sale: true, listing_id: listing.id });
-        return new Response(JSON.stringify({ ok: true, listing_id: listing.id }), { headers: { "Content-Type": "application/json" } });
+        const g = await base44.asServiceRole.entities.MudForgeGear.filter({ id: body.gear_id });
+        if (!g || g.length === 0) return new Response(JSON.stringify({ error: "not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
+        if (String(g[0].owner_telegram_id) !== tid) return new Response(JSON.stringify({ error: "not owner" }), { status: 403, headers: { "Content-Type": "application/json" } });
+        const l = await base44.asServiceRole.entities.MudForgeListing.create({ seller_telegram_id: tid, seller_username: body.username || "", nft_name: g[0].name, nft_image_url: g[0].image_url || "", nft_collection: "MudForge Genesis", nft_item_index: 0, tribe: g[0].tribe || "None", rarity: g[0].rarity || "Common", gear_slot: g[0].gear_slot || "Head", mining_bonus: g[0].mining_bonus || 0, companion_bonus: g[0].companion_bonus || 0, racing_bonus: g[0].racing_bonus || 0, price_mudd: Math.floor(body.price_mudd_ore / 1000), price_mudd_ore: body.price_mudd_ore, status: "active", buyer_telegram_id: "", sold_at: "" });
+        await base44.asServiceRole.entities.MudForgeGear.update(body.gear_id, { listed_for_sale: true, listing_id: l.id });
+        return new Response(JSON.stringify({ ok: true, listing_id: l.id }), { headers: { "Content-Type": "application/json" } });
       }
 
       if (body.action === "buy_market") {
-        const listingId = body.listing_id;
-        const listings = await base44.asServiceRole.entities.MudForgeListing.filter({ id: listingId });
-        if (!listings || listings.length === 0) {
-          return new Response(JSON.stringify({ error: "listing not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
-        }
-        const listing = listings[0];
-        if (listing.status !== "active") {
-          return new Response(JSON.stringify({ error: "listing not active" }), { status: 400, headers: { "Content-Type": "application/json" } });
-        }
-        if (String(listing.seller_telegram_id) === telegramId) {
-          return new Response(JSON.stringify({ error: "cannot buy own listing" }), { status: 400, headers: { "Content-Type": "application/json" } });
-        }
-        // Update listing
-        await base44.asServiceRole.entities.MudForgeListing.update(listingId, {
-          status: "sold",
-          buyer_telegram_id: telegramId,
-          sold_at: new Date().toISOString()
-        });
-        // Transfer gear to buyer
-        const sellerGear = await base44.asServiceRole.entities.MudForgeGear.filter({ listing_id: listingId });
-        if (sellerGear && sellerGear.length > 0) {
-          await base44.asServiceRole.entities.MudForgeGear.update(sellerGear[0].id, {
-            owner_telegram_id: telegramId,
-            listed_for_sale: false,
-            listing_id: "",
-            equipped: false
-          });
-        }
+        const ls = await base44.asServiceRole.entities.MudForgeListing.filter({ id: body.listing_id });
+        if (!ls || ls.length === 0) return new Response(JSON.stringify({ error: "not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
+        if (ls[0].status !== "active") return new Response(JSON.stringify({ error: "not active" }), { status: 400, headers: { "Content-Type": "application/json" } });
+        if (String(ls[0].seller_telegram_id) === tid) return new Response(JSON.stringify({ error: "can't buy own" }), { status: 400, headers: { "Content-Type": "application/json" } });
+        await base44.asServiceRole.entities.MudForgeListing.update(body.listing_id, { status: "sold", buyer_telegram_id: tid, sold_at: new Date().toISOString() });
+        const sg = await base44.asServiceRole.entities.MudForgeGear.filter({ listing_id: body.listing_id });
+        if (sg && sg.length > 0) await base44.asServiceRole.entities.MudForgeGear.update(sg[0].id, { owner_telegram_id: tid, listed_for_sale: false, listing_id: "", equipped: false });
         return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
       }
 
       if (body.action === "cancel_listing") {
-        const listingId = body.listing_id;
-        const listings = await base44.asServiceRole.entities.MudForgeListing.filter({ id: listingId });
-        if (!listings || listings.length === 0) {
-          return new Response(JSON.stringify({ error: "listing not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
-        }
-        if (String(listings[0].seller_telegram_id) !== telegramId) {
-          return new Response(JSON.stringify({ error: "not owner" }), { status: 403, headers: { "Content-Type": "application/json" } });
-        }
-        await base44.asServiceRole.entities.MudForgeListing.update(listingId, { status: "cancelled" });
-        const gear = await base44.asServiceRole.entities.MudForgeGear.filter({ listing_id: listingId });
-        if (gear && gear.length > 0) {
-          await base44.asServiceRole.entities.MudForgeGear.update(gear[0].id, { listed_for_sale: false, listing_id: "" });
-        }
+        const ls = await base44.asServiceRole.entities.MudForgeListing.filter({ id: body.listing_id });
+        if (!ls || ls.length === 0) return new Response(JSON.stringify({ error: "not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
+        if (String(ls[0].seller_telegram_id) !== tid) return new Response(JSON.stringify({ error: "not owner" }), { status: 403, headers: { "Content-Type": "application/json" } });
+        await base44.asServiceRole.entities.MudForgeListing.update(body.listing_id, { status: "cancelled" });
+        const g = await base44.asServiceRole.entities.MudForgeGear.filter({ listing_id: body.listing_id });
+        if (g && g.length > 0) await base44.asServiceRole.entities.MudForgeGear.update(g[0].id, { listed_for_sale: false, listing_id: "" });
         return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
       }
 
-      // ── WALLET API ──
       if (body.action === "link_wallet") {
-        const walletAddress = String(body.wallet_address || "").trim();
-        if (!walletAddress) {
-          return new Response(JSON.stringify({ ok: false, error: "Missing wallet_address" }), { headers: { "Content-Type": "application/json" } });
-        }
-        const validAddress = /^[UE0k]Q[A-Za-z0-9_\-]{46,48}$/.test(walletAddress);
-        if (!validAddress) {
-          return new Response(JSON.stringify({ ok: false, error: "Invalid TON address" }), { headers: { "Content-Type": "application/json" } });
-        }
-        const players = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
-        if (!players || players.length === 0) {
-          return new Response(JSON.stringify({ ok: false, error: "Player not found" }), { headers: { "Content-Type": "application/json" } });
-        }
-        await base44.asServiceRole.entities.RingMinePlayer.update(players[0].id, { ton_wallet_address: walletAddress });
-        if (players[0].state_data) {
-          try { const st = JSON.parse(players[0].state_data); st.tonWallet = walletAddress; await base44.asServiceRole.entities.RingMinePlayer.update(players[0].id, { state_data: JSON.stringify(st) }); } catch(e){}
-        }
-        return new Response(JSON.stringify({ ok: true, wallet_address: walletAddress }), { headers: { "Content-Type": "application/json" } });
+        const wa = String(body.wallet_address || "").trim();
+        if (!wa) return new Response(JSON.stringify({ ok: false, error: "missing address" }), { headers: { "Content-Type": "application/json" } });
+        if (!/^[UE0k]Q[A-Za-z0-9_\-]{46,48}$/.test(wa)) return new Response(JSON.stringify({ ok: false, error: "invalid TON address" }), { headers: { "Content-Type": "application/json" } });
+        const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
+        if (!ps || ps.length === 0) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
+        await base44.asServiceRole.entities.RingMinePlayer.update(ps[0].id, { ton_wallet_address: wa });
+        return new Response(JSON.stringify({ ok: true, wallet_address: wa }), { headers: { "Content-Type": "application/json" } });
       }
 
       if (body.action === "get_wallet") {
-        const players = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
-        if (!players || players.length === 0) {
-          return new Response(JSON.stringify({ ok: false, error: "Player not found" }), { headers: { "Content-Type": "application/json" } });
-        }
-        const p = players[0];
-        let stateOre = 0;
-        if (p.state_data) { try { const st = JSON.parse(p.state_data); stateOre = st.ore || 0; } catch(e){} }
-        const totalOre = Math.max(p.mudd_ore_balance || 0, stateOre);
-        return new Response(JSON.stringify({
-          ok: true, wallet_linked: !!(p.ton_wallet_address), wallet_address: p.ton_wallet_address || "",
-          mudd_ore_balance: totalOre, total_withdrawn: p.total_withdrawn || 0,
-          can_withdraw: totalOre >= 1000, min_withdrawal: 1000
-        }), { headers: { "Content-Type": "application/json" } });
+        const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
+        if (!ps || ps.length === 0) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
+        const p = ps[0]; let so = 0; if (p.state_data) { try { const s = JSON.parse(p.state_data); so = s.ore || 0; } catch { } }
+        const to = Math.max(p.mudd_ore_balance || 0, so);
+        return new Response(JSON.stringify({ ok: true, wallet_linked: !!(p.ton_wallet_address), wallet_address: p.ton_wallet_address || "", mudd_ore_balance: to, total_withdrawn: p.total_withdrawn || 0, can_withdraw: to >= 1000, min_withdrawal: 1000 }), { headers: { "Content-Type": "application/json" } });
       }
 
       if (body.action === "withdraw") {
-        const oreAmount = Number(body.mudd_ore_amount || 0);
-        if (oreAmount < 1000) {
-          return new Response(JSON.stringify({ ok: false, error: "Minimum withdrawal is 1000 MuddOre" }), { headers: { "Content-Type": "application/json" } });
-        }
-        const players = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
-        if (!players || players.length === 0) {
-          return new Response(JSON.stringify({ ok: false, error: "Player not found" }), { headers: { "Content-Type": "application/json" } });
-        }
-        const p = players[0];
-        const walletAddress = p.ton_wallet_address || "";
-        if (!walletAddress) {
-          return new Response(JSON.stringify({ ok: false, error: "No wallet linked" }), { headers: { "Content-Type": "application/json" } });
-        }
-        let currentOre = p.mudd_ore_balance || 0;
-        let stateData = null;
-        if (p.state_data) { try { stateData = JSON.parse(p.state_data); currentOre = Math.max(currentOre, stateData.ore || 0); } catch(e){} }
-        if (currentOre < oreAmount) {
-          return new Response(JSON.stringify({ ok: false, error: "Insufficient MuddOre: have " + currentOre + ", need " + oreAmount }), { headers: { "Content-Type": "application/json" } });
-        }
-        const muddAmount = Math.floor(oreAmount / 1000);
-        const remainingOre = currentOre - oreAmount;
-        const leftoverOre = oreAmount % 1000;
-        let history = [];
-        if (p.withdrawal_history) { try { history = JSON.parse(p.withdrawal_history); } catch(e){} }
-        history.push({ date: new Date().toISOString(), mudd_ore_amount: oreAmount, mudd_sent: muddAmount, wallet: walletAddress, status: "pending" });
-        if (history.length > 50) history = history.slice(-50);
-        const updateData = { mudd_ore_balance: remainingOre + leftoverOre, total_withdrawn: (p.total_withdrawn || 0) + muddAmount, withdrawal_history: JSON.stringify(history) };
-        if (stateData) { stateData.ore = remainingOre + leftoverOre; updateData.state_data = JSON.stringify(stateData); }
-        await base44.asServiceRole.entities.RingMinePlayer.update(p.id, updateData);
-        return new Response(JSON.stringify({ ok: true, mudd_sent: muddAmount, remaining_ore: remainingOre + leftoverOre, wallet: walletAddress, status: "pending" }), { headers: { "Content-Type": "application/json" } });
+        const amt = Number(body.mudd_ore_amount || 0);
+        if (amt < 1000) return new Response(JSON.stringify({ ok: false, error: "Min 1000" }), { headers: { "Content-Type": "application/json" } });
+        const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
+        if (!ps || ps.length === 0) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
+        const p = ps[0]; const wa = p.ton_wallet_address || "";
+        if (!wa) return new Response(JSON.stringify({ ok: false, error: "no wallet linked" }), { headers: { "Content-Type": "application/json" } });
+        let ore = p.mudd_ore_balance || 0, sd: any = null;
+        if (p.state_data) { try { sd = JSON.parse(p.state_data); ore = Math.max(ore, sd.ore || 0); } catch { } }
+        if (ore < amt) return new Response(JSON.stringify({ ok: false, error: "insufficient" }), { headers: { "Content-Type": "application/json" } });
+        const mudd = Math.floor(amt / 1000); const rem = ore - amt; const lo = amt % 1000;
+        let hist = []; if (p.withdrawal_history) { try { hist = JSON.parse(p.withdrawal_history); } catch { } }
+        hist.push({ date: new Date().toISOString(), mudd_ore_amount: amt, mudd_sent: mudd, wallet: wa, status: "pending" });
+        if (hist.length > 50) hist = hist.slice(-50);
+        const ud: any = { mudd_ore_balance: rem + lo, total_withdrawn: (p.total_withdrawn || 0) + mudd, withdrawal_history: JSON.stringify(hist) };
+        if (sd) { sd.ore = rem + lo; ud.state_data = JSON.stringify(sd); }
+        await base44.asServiceRole.entities.RingMinePlayer.update(p.id, ud);
+        return new Response(JSON.stringify({ ok: true, mudd_sent: mudd, remaining_ore: rem + lo, wallet: wa, status: "pending" }), { headers: { "Content-Type": "application/json" } });
       }
 
       if (body.action === "get_history") {
-        const players = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
-        if (!players || players.length === 0) { return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } }); }
-        const p = players[0];
-        let history = [];
-        if (p.withdrawal_history) { try { history = JSON.parse(p.withdrawal_history); } catch(e){} }
-        return new Response(JSON.stringify({ ok: true, total_withdrawn: p.total_withdrawn || 0, history: history.slice(-20) }), { headers: { "Content-Type": "application/json" } });
-      }
-
-      if (body.action === "load_equipped_gear") {
-        const gear = await base44.asServiceRole.entities.MudForgeGear.filter({ owner_telegram_id: telegramId, equipped: true });
-        return new Response(JSON.stringify({ gear: gear || [] }), { headers: { "Content-Type": "application/json" } });
+        const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
+        if (!ps || ps.length === 0) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
+        let hist = []; if (ps[0].withdrawal_history) { try { hist = JSON.parse(ps[0].withdrawal_history); } catch { } }
+        return new Response(JSON.stringify({ ok: true, total_withdrawn: ps[0].total_withdrawn || 0, history: hist.slice(-20) }), { headers: { "Content-Type": "application/json" } });
       }
 
       return new Response(JSON.stringify({ error: "unknown action" }), { status: 400, headers: { "Content-Type": "application/json" } });
     } catch (e) {
-      console.error("ringMineApp API error:", e);
+      console.error("ringMineApp error:", e);
       return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { "Content-Type": "application/json" } });
     }
   }
 
-  const html = await fetchHTML();
-  // Inject the API URL so frontend knows where to send POST requests
+  // Serve Mini App HTML
   const selfUrl = new URL(req.url).origin + new URL(req.url).pathname;
-  const injectedHtml = html.replace("window.__RINGMINE_API_URL__", JSON.stringify(selfUrl));
-  return new Response(injectedHtml, {
-    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0" }
-  });
-});
-
-async function fetchHTML() {
   try {
-    const resp = await fetch("https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/9db7ed87d_live_ringmine_v2.html", { cache: "no-store" });
-    if (resp.ok) return await resp.text();
-  } catch(e) {}
-  return "<h1>Loading Ring Mine...</h1><p>If this persists, please restart the bot.</p>";
-}
+    const resp = await fetch(HTML_URL, { cache: "no-store" });
+    if (resp.ok) {
+      let html = await resp.text();
+      html = html.replace("window.__RINGMINE_API_URL__", JSON.stringify(selfUrl));
+      return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache, no-store, must-revalidate" } });
+    }
+  } catch (e) { console.error("HTML fetch error:", e); }
+  return new Response("<h1>Loading Ring Mine...</h1>", { headers: { "Content-Type": "text/html" } });
+});
