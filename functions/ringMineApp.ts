@@ -161,23 +161,11 @@ Deno.serve(async (req: Request) => {
       }
 
       if (body.action === "withdraw") {
-        const amt = Number(body.mudd_ore_amount || 0);
-        if (amt < 1000) return new Response(JSON.stringify({ ok: false, error: "Min 1000" }), { headers: { "Content-Type": "application/json" } });
-        const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
-        if (!ps || ps.length === 0) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
-        const p = ps[0]; const wa = p.ton_wallet_address || "";
-        if (!wa) return new Response(JSON.stringify({ ok: false, error: "no wallet linked" }), { headers: { "Content-Type": "application/json" } });
-        let ore = p.mudd_ore_balance || 0, sd: any = null;
-        if (p.state_data) { try { sd = JSON.parse(p.state_data); ore = Math.max(ore, sd.ore || 0); } catch { } }
-        if (ore < amt) return new Response(JSON.stringify({ ok: false, error: "insufficient" }), { headers: { "Content-Type": "application/json" } });
-        const mudd = Math.floor(amt / 1000); const rem = ore - amt; const lo = amt % 1000;
-        let hist = []; if (p.withdrawal_history) { try { hist = JSON.parse(p.withdrawal_history); } catch { } }
-        hist.push({ date: new Date().toISOString(), mudd_ore_amount: amt, mudd_sent: mudd, wallet: wa, status: "pending" });
-        if (hist.length > 50) hist = hist.slice(-50);
-        const ud: any = { mudd_ore_balance: rem + lo, total_withdrawn: (p.total_withdrawn || 0) + mudd, withdrawal_history: JSON.stringify(hist) };
-        if (sd) { sd.ore = rem + lo; ud.state_data = JSON.stringify(sd); }
-        await base44.asServiceRole.entities.RingMinePlayer.update(p.id, ud);
-        return new Response(JSON.stringify({ ok: true, mudd_sent: mudd, remaining_ore: rem + lo, wallet: wa, status: "pending" }), { headers: { "Content-Type": "application/json" } });
+        // Forward to walletManager for real on-chain MUDD jetton transfer
+        const wmUrl = new URL(req.url).origin + "/functions/walletManager";
+        const wmRes = await fetch(wmUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "withdraw", telegram_id: tid, mudd_ore_amount: body.mudd_ore_amount }) });
+        const wmData = await wmRes.json();
+        return new Response(JSON.stringify(wmData), { headers: { "Content-Type": "application/json" } });
       }
 
       if (body.action === "get_history") {
