@@ -43,14 +43,15 @@ Deno.serve(async (req: Request) => {
         let eb = 0;
         try { const eq = await base44.asServiceRole.entities.MudForgeGear.filter({ owner_telegram_id: tid, equipped: true }); for (const g of eq) eb += (g.mining_bonus || 0); } catch { }
         eb = eb / 100;
-        const yield_ = Math.floor(baseYield * gm * (1 + eb));
+        const compBonus = p.companion === "Kaelith" ? 0.15 : 0;
+        const yield_ = Math.floor(baseYield * gm * (1 + eb + compBonus));
         let ore = p.mudd_ore_balance || 0, sd: any = null;
         if (p.state_data) { try { sd = JSON.parse(p.state_data); ore = Math.max(ore, sd.ore || 0); } catch { } }
         const newOre = ore + yield_;
         const ud: any = { mudd_ore_balance: newOre };
         if (sd) { sd.ore = newOre; ud.state_data = JSON.stringify(sd); }
         await base44.asServiceRole.entities.RingMinePlayer.update(p.id, ud);
-        return new Response(JSON.stringify({ ok: true, yield: yield_, base_yield: baseYield, glyph_bonus: Math.round((gm - 1) * 100) + "%", equip_bonus: Math.round(eb * 100) + "%", new_balance: newOre, glyph_state: gs }), { headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ ok: true, yield: yield_, base_yield: baseYield, glyph_bonus: Math.round((gm - 1) * 100) + "%", equip_bonus: Math.round(eb * 100) + "%", companion_bonus: Math.round(compBonus * 100) + "%", companion: p.companion || null, new_balance: newOre, glyph_state: gs }), { headers: { "Content-Type": "application/json" } });
       }
 
       if (body.action === "casino_flip") {
