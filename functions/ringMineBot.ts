@@ -61,6 +61,13 @@ async function journalFlow(b: any, p: any, cid: number, text: string, source: st
   p.mudd_balance = (p.mudd_balance || 0) + mdG;
   p.state = first ? "awaiting_companion" : "journaling";
   p.last_journal = new Date().toISOString();
+  const lastDate = p.journals?.length > 0 ? new Date(p.journals[p.journals.length - 1].date) : null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  if (lastDate) { const lastDay = new Date(lastDate); lastDay.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((today.getTime() - lastDay.getTime()) / 86400000);
+    if (diffDays === 1) p.streak_days = (p.streak_days || 0) + 1;
+    else if (diffDays > 1) p.streak_days = 1;
+  } else { p.streak_days = 1; }
   p.journals = p.journals || [];
   p.journals.push({ date: new Date().toISOString(), entry: text, reflection: r.response, mood: r.mood, source });
   await saveP(b, p);
@@ -152,7 +159,8 @@ Deno.serve(async (req: Request) => {
     const gs = p.glyph_state || "Seed"; const co = p.glyph_cohesion || 0; const an = p.resonance_anchors || [];
     const cn = p.companion || "None"; const cb = p.companion_bond || 0;
     const cl = cn !== "None" && COMP[cn] ? `${COMP[cn].e} ${cn} (${cb}/100)` : "_Not chosen_";
-    await sm(cid, `📈 *Your Growth*\n\nXP: ${p.growth_xp || 0}\nQueen Bond: ${p.queen_bond || 0}/100\n${cl}\nMUDD: ${p.mudd_balance || 0}\nEntries: ${p.journals?.length || 0}\n\n${GE[gs as keyof typeof GE] || "🌱"} Glyph: ${gs}\nCohesion: ${co.toFixed(1)}\nAnchors: ${an.length}\n\n_The journey is the reward._`, { reply_markup: menu() });
+    await sm(cid, `📈 *Your Growth*\n\nXP: ${p.growth_xp || 0}\nQueen Bond: ${p.queen_bond || 0}/100\n${cl}\nMUDD: ${p.mudd_balance || 0}\nEntries: ${p.journals?.length || 0}
+Streak: ${p.streak_days || 0} days\n\n${GE[gs as keyof typeof GE] || "🌱"} Glyph: ${gs}\nCohesion: ${co.toFixed(1)}\nAnchors: ${an.length}\n\n_The journey is the reward._`, { reply_markup: menu() });
     return new Response("ok");
   }
   if (text === "🦊 Companion") {
