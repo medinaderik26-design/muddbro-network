@@ -127,7 +127,7 @@ Deno.serve(async (req: Request) => {
       // Forward market/wallet/leaderboard to ringMineMarket
       const forwardActions = ["list_gear", "buy_market", "cancel_listing", "link_wallet", "get_wallet", "withdraw", "get_history", "leaderboard"];
       if (forwardActions.includes(body.action)) {
-        const mUrl = new URL(req.url).origin + "/functions/ringMineMarket";
+        const mUrl = "https://superagent-ec909dfa.base44.app/functions/ringMineMarket";
         const mRes = await fetch(mUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
         const mData = await mRes.json();
         return new Response(JSON.stringify(mData), { headers: { "Content-Type": "application/json" } });
