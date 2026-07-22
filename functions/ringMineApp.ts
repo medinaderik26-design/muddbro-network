@@ -62,7 +62,8 @@ Deno.serve(async (req: Request) => {
         if (p.state_data) { try { sd = JSON.parse(p.state_data); ore = Math.max(ore, sd.ore || 0); } catch { } }
         if (ore < bet) return new Response(JSON.stringify({ ok: false, error: "Need " + bet + " ore (have " + ore + ")" }), { headers: { "Content-Type": "application/json" } });
         const result = Math.random() < 0.5 ? "heads" : "tails"; const won = result === choice;
-        const payout = won ? bet * 2 : 0; const newOre = ore - bet + payout;
+        const sableBoost = p.companion === "Sable" && won ? Math.floor(bet * 0.1) : 0;
+        const payout = won ? bet * 2 + sableBoost : 0; const newOre = ore - bet + payout;
         const ud: any = { mudd_ore_balance: newOre }; if (sd) { sd.ore = newOre; ud.state_data = JSON.stringify(sd); }
         await base44.asServiceRole.entities.RingMinePlayer.update(p.id, ud);
         return new Response(JSON.stringify({ ok: true, won, result, bet, payout, new_balance: newOre, message: won ? "🪙 " + result.toUpperCase() + "! Won " + payout + " ore!" : "🪙 " + result.toUpperCase() + ". Lost " + bet + " ore." }), { headers: { "Content-Type": "application/json" } });
@@ -82,10 +83,12 @@ Deno.serve(async (req: Request) => {
         if (reels[0] === reels[1] && reels[1] === reels[2]) { const m: any = { "💎":10,"👑":8,"🔥":6,"🌀":5,"⛏️":4,"💀":3 }; payout = bet * (m[reels[0]] || 3); msg = "🎰 JACKPOT! Three " + reels[0] + "! Won " + payout + " ore!"; }
         else if (reels[0] === reels[1] || reels[1] === reels[2] || reels[0] === reels[2]) { payout = Math.floor(bet * 1.5); msg = "🎰 Two of a kind! Won " + payout + " ore."; }
         else { msg = "🎰 No match. Lost " + bet + " ore."; }
-        const newOre = ore - bet + payout;
+        const sableSlotBoost = p.companion === "Sable" && payout > 0 ? Math.floor(payout * 0.1) : 0;
+        const finalPayout = payout + sableSlotBoost;
+        const newOre = ore - bet + finalPayout;
         const ud: any = { mudd_ore_balance: newOre }; if (sd) { sd.ore = newOre; ud.state_data = JSON.stringify(sd); }
         await base44.asServiceRole.entities.RingMinePlayer.update(p.id, ud);
-        return new Response(JSON.stringify({ ok: true, reels, bet, payout, new_balance: newOre, message: msg }), { headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ ok: true, reels, bet, payout: finalPayout, new_balance: newOre, message: msg }), { headers: { "Content-Type": "application/json" } });
       }
 
       if (body.action === "load_gear") { const g = await base44.asServiceRole.entities.MudForgeGear.filter({ owner_telegram_id: tid }); return new Response(JSON.stringify({ gear: g || [] }), { headers: { "Content-Type": "application/json" } }); }
