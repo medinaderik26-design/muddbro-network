@@ -6,6 +6,68 @@
     "companion_bond": {
       "type": "number"
     },
+    "full_name": {
+      "type": "string"
+    },
+    "glyph_cohesion": {
+      "type": "number"
+    },
+    "glyph_lineage": {
+      "items": {
+        "properties": {
+          "from_state": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "to_state": {
+            "type": "string"
+          },
+          "transition_date": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "glyph_seeds": {
+      "items": {
+        "properties": {
+          "cohesion": {
+            "type": "number"
+          },
+          "created_date": {
+            "type": "string"
+          },
+          "entry": {
+            "type": "string"
+          },
+          "journal_id": {
+            "type": "string"
+          },
+          "mood": {
+            "type": "string"
+          },
+          "resonance_count": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "glyph_state": {
+      "enum": [
+        "Seed",
+        "Glyph",
+        "Resonant",
+        "Hyperstate",
+        "Monument"
+      ],
+      "type": "string"
+    },
     "growth_xp": {
       "type": "number"
     },
@@ -23,6 +85,26 @@
     },
     "queen_name": {
       "type": "string"
+    },
+    "resonance_anchors": {
+      "items": {
+        "properties": {
+          "anchor_date": {
+            "type": "string"
+          },
+          "count": {
+            "type": "number"
+          },
+          "keyword": {
+            "type": "string"
+          },
+          "strength": {
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "type": "array"
     },
     "state": {
       "type": "string"
@@ -49,90 +131,28 @@
       "type": "string"
     },
     "withdrawal_history": {
-      "type": "array"
-    },
-    "full_name": {
-      "type": "string"
-    },
-    "glyph_state": {
-      "enum": [
-        "Seed",
-        "Glyph",
-        "Resonant",
-        "Hyperstate",
-        "Monument"
-      ],
-      "type": "string"
-    },
-    "glyph_seeds": {
       "items": {
-        "object": {
-          "properties": {
-            "cohesion": {
-              "type": "number"
-            },
-            "created_date": {
-              "type": "string"
-            },
-            "entry": {
-              "type": "string"
-            },
-            "journal_id": {
-              "type": "string"
-            },
-            "mood": {
-              "type": "string"
-            },
-            "resonance_count": {
-              "type": "number"
-            }
-          }
-        },
-        "type": "object"
-      },
-      "type": "array"
-    },
-    "glyph_cohesion": {
-      "type": "number"
-    },
-    "glyph_lineage": {
-      "items": {
-        "object": {
-          "properties": {
-            "from_state": {
-              "type": "string"
-            },
-            "reason": {
-              "type": "string"
-            },
-            "to_state": {
-              "type": "string"
-            },
-            "transition_date": {
-              "type": "string"
-            }
-          }
-        },
-        "type": "object"
-      },
-      "type": "array"
-    },
-    "resonance_anchors": {
-      "items": {
-        "object": {
-          "properties": {
-            "anchor_date": {
-              "type": "string"
-            },
-            "count": {
-              "type": "number"
-            },
-            "keyword": {
-              "type": "string"
-            },
-            "strength": {
-              "type": "number"
-            }
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "dest_address": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "mudd_amount": {
+            "type": "number"
+          },
+          "mudd_ore_amount": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          },
+          "tx_hash": {
+            "type": "string"
           }
         },
         "type": "object"
