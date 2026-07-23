@@ -1,7 +1,7 @@
 # MudForge + Wallet Deployment Status
 **Last Updated:** 2026-07-23
 
-## Live Backend Functions (16 total)
+## Live Backend Functions (17 total)
 
 ### Core Game
 1. **ringMineApp** — Main game frontend + API (serves HTML, handles load/save/mine/casino/forge)
@@ -9,6 +9,9 @@
 3. **ringMineBot** — Ring Mine Telegram bot (16KB, split from brain)
 4. **ringMineBrain** — Queen's Protocol AI engine (reflect, glyphin, transcription)
 5. **ringMineGate** — Cache-busting wrapper (legacy)
+
+### Brain Sync
+10. **brainSync** — 02_BRAIN local OS ↔ cloud glyphin sync (sync_glyphin, pull_cloud, push_chronicle)
 
 ### Inner Earth
 6. **innerEarthBot** — Inner Earth Telegram bot v3 (passport bridge, no pinned messages)
