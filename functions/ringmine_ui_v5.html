@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Ring Mine</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0a0a0f;color:#a0f0ff;font-family:'Courier New',monospace;max-width:500px;margin:0 auto;padding-bottom:80px;-webkit-tap-highlight-color:transparent}
@@ -131,7 +132,7 @@ input[type=range]{accent-color:#a0f0ff}
 <div class="tabs" id="tabs">
 <button class="tab active" data-t="mine"><span class="ti">⛏️</span>Mine</button>
 <button class="tab" data-t="glyph"><span class="ti">🔮</span>Glyph</button>
-<button class="tab active" data-t="casino"><span class="ti">🎲</span>Casino</button>
+<button class="tab" data-t="casino"><span class="ti">🎲</span>Casino</button>
 <button class="tab" data-t="forge"><span class="ti">🔨</span>Forge</button>
 <button class="tab" data-t="wallet"><span class="ti">💰</span>Wallet</button>
 <button class="tab" data-t="stats"><span class="ti">📊</span>Stats</button>
@@ -285,6 +286,7 @@ let curTab="mine";
 function render(){document.getElementById("app").innerHTML=R[curTab]();}
 async function switchTab(t){curTab=t;document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.t===t));if(t==="casino")await loadGlyph();render();}
 document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>switchTab(b.dataset.t)));
+try{window.Telegram?.WebApp?.ready?.();window.Telegram?.WebApp?.expand?.();}catch(e){}
 (async()=>{await load();await loadGlyph();render();})();
 </script>
 </body>
