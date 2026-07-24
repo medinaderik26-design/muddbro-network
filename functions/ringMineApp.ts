@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-const HTML_URL = "https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/6cca828ba_ringmine_ui.html";
+const HTML_URL = "https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/9ee256b23_ringmine_ui_v4.html";
 Deno.serve(async (req: Request) => {
   if (req.method === "POST") {
     try {
@@ -9,8 +9,24 @@ Deno.serve(async (req: Request) => {
       if (!tid) return new Response(JSON.stringify({ error: "missing telegram_id" }), { status: 400, headers: { "Content-Type": "application/json" } });
       if (body.action === "load") {
         const ex = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
-        if (ex && ex.length > 0) { let s = null; try { s = ex[0].state_data ? JSON.parse(ex[0].state_data) : null; } catch { } return new Response(JSON.stringify({ found: true, state: s }), { headers: { "Content-Type": "application/json" } }); }
-        return new Response(JSON.stringify({ found: false, state: null }), { headers: { "Content-Type": "application/json" } });
+        if (ex && ex.length > 0) {
+          const p = ex[0];
+          let sd: any = null;
+          try { sd = p.state_data ? (typeof p.state_data === "string" ? JSON.parse(p.state_data) : p.state_data) : null; } catch {}
+          const ore = Math.max(p.mudd_ore_balance || 0, sd?.ore || 0);
+          const mudd = Math.max(p.mudd_balance || 0, sd?.mudd || 0);
+          return new Response(JSON.stringify({ ok: true, player: {
+            telegram_id: p.telegram_id, username: p.username || "", full_name: p.full_name || "",
+            mudd_ore_balance: ore, mudd_balance: mudd,
+            growth_xp: p.growth_xp || 0, companion: p.companion || null,
+            companion_bond: p.companion_bond || 0, queen_name: p.queen_name || "",
+            queen_bond: p.queen_bond || 0, streak_days: p.streak_days || 0,
+            glyph_state: p.glyph_state || "Seed", ton_wallet_address: p.ton_wallet_address || "",
+            total_withdrawn: p.total_withdrawn || 0, total_mudd_burned: p.total_mudd_burned || 0,
+            state_data: sd
+          }}), { headers: { "Content-Type": "application/json" } });
+        }
+        return new Response(JSON.stringify({ ok: false, player: null }), { headers: { "Content-Type": "application/json" } });
       }
       if (body.action === "save") {
         const st = body.state || {};
@@ -40,7 +56,7 @@ Deno.serve(async (req: Request) => {
         const compBonus = p.companion === "Kaelith" ? 0.15 : 0;
         const yield_ = Math.floor(baseYield * gm * (1 + eb + compBonus));
         let ore = p.mudd_ore_balance || 0, sd: any = null;
-        if (p.state_data) { try { sd = JSON.parse(p.state_data); ore = Math.max(ore, sd.ore || 0); } catch { } }
+        if (p.state_data) { try { sd = typeof p.state_data === "string" ? JSON.parse(p.state_data) : p.state_data; ore = Math.max(ore, sd.ore || 0); } catch { } }
         const newOre = ore + yield_;
         const ud: any = { mudd_ore_balance: newOre };
         if (sd) { sd.ore = newOre; ud.state_data = JSON.stringify(sd); }
@@ -53,14 +69,14 @@ Deno.serve(async (req: Request) => {
         const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
         if (!ps || ps.length === 0) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
         const p = ps[0]; let ore = p.mudd_ore_balance || 0, sd: any = null;
-        if (p.state_data) { try { sd = JSON.parse(p.state_data); ore = Math.max(ore, sd.ore || 0); } catch { } }
+        if (p.state_data) { try { sd = typeof p.state_data === "string" ? JSON.parse(p.state_data) : p.state_data; ore = Math.max(ore, sd.ore || 0); } catch { } }
         if (ore < bet) return new Response(JSON.stringify({ ok: false, error: "Need " + bet + " ore (have " + ore + ")" }), { headers: { "Content-Type": "application/json" } });
         const result = Math.random() < 0.5 ? "heads" : "tails"; const won = result === choice;
         const sableBoost = p.companion === "Sable" && won ? Math.floor(bet * 0.1) : 0;
         const payout = won ? bet * 2 + sableBoost : 0; const newOre = ore - bet + payout;
         const ud: any = { mudd_ore_balance: newOre }; if (sd) { sd.ore = newOre; ud.state_data = JSON.stringify(sd); }
         await base44.asServiceRole.entities.RingMinePlayer.update(p.id, ud);
-        return new Response(JSON.stringify({ ok: true, won, result, bet, payout, new_balance: newOre, message: won ? "🪙 " + result.toUpperCase() + "! Won " + payout + " ore!" : "🪙 " + result.toUpperCase() + ". Lost " + bet + " ore." }), { headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ ok: true, won, result, bet, payout, sable_bonus: sableBoost, new_balance: newOre, delta: newOre - ore, message: won ? "🪙 " + result.toUpperCase() + "! Won " + payout + " ore!" : "🪙 " + result.toUpperCase() + ". Lost " + bet + " ore." }), { headers: { "Content-Type": "application/json" } });
       }
       if (body.action === "casino_slots") {
         const bet = Math.floor(Number(body.bet) || 0);
@@ -68,7 +84,7 @@ Deno.serve(async (req: Request) => {
         const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
         if (!ps || ps.length === 0) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
         const p = ps[0]; let ore = p.mudd_ore_balance || 0, sd: any = null;
-        if (p.state_data) { try { sd = JSON.parse(p.state_data); ore = Math.max(ore, sd.ore || 0); } catch { } }
+        if (p.state_data) { try { sd = typeof p.state_data === "string" ? JSON.parse(p.state_data) : p.state_data; ore = Math.max(ore, sd.ore || 0); } catch { } }
         if (ore < bet) return new Response(JSON.stringify({ ok: false, error: "Need " + bet + " ore (have " + ore + ")" }), { headers: { "Content-Type": "application/json" } });
         const syms = ["💎","⛏️","🔥","🌀","👑","💀"];
         const reels = [syms[Math.floor(Math.random()*6)], syms[Math.floor(Math.random()*6)], syms[Math.floor(Math.random()*6)]];
@@ -81,7 +97,7 @@ Deno.serve(async (req: Request) => {
         const newOre = ore - bet + finalPayout;
         const ud: any = { mudd_ore_balance: newOre }; if (sd) { sd.ore = newOre; ud.state_data = JSON.stringify(sd); }
         await base44.asServiceRole.entities.RingMinePlayer.update(p.id, ud);
-        return new Response(JSON.stringify({ ok: true, reels, bet, payout: finalPayout, new_balance: newOre, message: msg }), { headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ ok: true, symbols: reels, bet, payout: finalPayout, sable_bonus: sableSlotBoost, new_balance: newOre, message: msg }), { headers: { "Content-Type": "application/json" } });
       }
       if (body.action === "casino_dice") {
         const bet = Math.floor(Number(body.bet) || 0); const target = Math.floor(Number(body.target) || 50);
@@ -90,7 +106,7 @@ Deno.serve(async (req: Request) => {
         const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
         if (!ps || ps.length === 0) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
         const p = ps[0]; let ore = p.mudd_ore_balance || 0, sd: any = null;
-        if (p.state_data) { try { sd = JSON.parse(p.state_data); ore = Math.max(ore, sd.ore || 0); } catch { } }
+        if (p.state_data) { try { sd = typeof p.state_data === "string" ? JSON.parse(p.state_data) : p.state_data; ore = Math.max(ore, sd.ore || 0); } catch { } }
         if (ore < bet) return new Response(JSON.stringify({ ok: false, error: "Need " + bet + " ore (have " + ore + ")" }), { headers: { "Content-Type": "application/json" } });
         const roll = Math.floor(Math.random() * 100) + 1; const won = roll < target;
         const multiplier = 99 / (target - 1); const payout = won ? Math.floor(bet * multiplier) : 0;
@@ -99,18 +115,17 @@ Deno.serve(async (req: Request) => {
         const newOre = ore - bet + finalPayout;
         const ud: any = { mudd_ore_balance: newOre }; if (sd) { sd.ore = newOre; ud.state_data = JSON.stringify(sd); }
         await base44.asServiceRole.entities.RingMinePlayer.update(p.id, ud);
-        return new Response(JSON.stringify({ ok: true, roll, target, won, multiplier: multiplier.toFixed(2), bet, payout: finalPayout, new_balance: newOre, message: won ? "🎲 Rolled " + roll + " (under " + target + ")! Won " + finalPayout + " ore!" : "🎲 Rolled " + roll + " (needed under " + target + "). Lost " + bet + " ore." }), { headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ ok: true, roll, target, won, multiplier: multiplier.toFixed(2), bet, payout: finalPayout, sable_bonus: sableBoost, new_balance: newOre, delta: newOre - ore, message: won ? "🎲 Rolled " + roll + " (under " + target + ")! Won " + finalPayout + " ore!" : "🎲 Rolled " + roll + " (needed under " + target + "). Lost " + bet + " ore." }), { headers: { "Content-Type": "application/json" } });
       }
-      if (body.action === "load_gear") { const g = await base44.asServiceRole.entities.MudForgeGear.filter({ owner_telegram_id: tid }); return new Response(JSON.stringify({ gear: g || [] }), { headers: { "Content-Type": "application/json" } }); }
+      if (body.action === "load_gear") { const g = await base44.asServiceRole.entities.MudForgeGear.filter({ owner_telegram_id: tid }); return new Response(JSON.stringify({ ok: true, gear: g || [] }), { headers: { "Content-Type": "application/json" } }); }
       if (body.action === "equip_gear") { await base44.asServiceRole.entities.MudForgeGear.update(body.gear_id, { equipped: body.equipped }); return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } }); }
-      if (body.action === "load_market") { const l = await base44.asServiceRole.entities.MudForgeListing.filter({ status: "active" }); return new Response(JSON.stringify({ listings: l || [] }), { headers: { "Content-Type": "application/json" } }); }
-      if (body.action === "load_equipped_gear") { const g = await base44.asServiceRole.entities.MudForgeGear.filter({ owner_telegram_id: tid, equipped: true }); return new Response(JSON.stringify({ gear: g || [] }), { headers: { "Content-Type": "application/json" } }); }
-      if (body.action === "craft_gear") {
+      if (body.action === "load_market") { const l = await base44.asServiceRole.entities.MudForgeListing.filter({ status: "active" }); return new Response(JSON.stringify({ ok: true, listings: l || [] }), { headers: { "Content-Type": "application/json" } }); }
+      if (body.action === "craft_gear" || body.action === "forge") {
         const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
         if (!ps || ps.length === 0) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
         const p = ps[0]; const CC = 200, BR = 0.3;
         let mudd = p.mudd_balance || 0, sd: any = null;
-        if (p.state_data) { try { sd = JSON.parse(p.state_data); mudd = Math.max(mudd, sd.mudd || 0); } catch { } }
+        if (p.state_data) { try { sd = typeof p.state_data === "string" ? JSON.parse(p.state_data) : p.state_data; mudd = Math.max(mudd, sd.mudd || 0); } catch { } }
         if (mudd < CC) return new Response(JSON.stringify({ ok: false, error: "Need " + CC + " MUDD (have " + mudd + ")" }), { headers: { "Content-Type": "application/json" } });
         const tribe = String(body.tribe || "None"); const roll = Math.random() * 100;
         let rar: string, t: number, mn: number, mx: number;
@@ -138,14 +153,17 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { "Content-Type": "application/json" } });
     }
   }
+  // Serve HTML
   const selfUrl = new URL(req.url).origin + new URL(req.url).pathname;
-  try {
-    const resp = await fetch(HTML_URL, { cache: "no-store" });
-    if (resp.ok) {
-      let html = await resp.text();
-      html = html.replace("window.__RINGMINE_API_URL__", JSON.stringify(selfUrl));
-      return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache, no-store, must-revalidate" } });
-    }
-  } catch (e) { console.error("HTML fetch error:", e); }
-  return new Response("<h1>Loading Ring Mine...</h1>", { headers: { "Content-Type": "text/html" } });
+  if (HTML_URL) {
+    try {
+      const resp = await fetch(HTML_URL, { cache: "no-store" });
+      if (resp.ok) {
+        let html = await resp.text();
+        html = html.replace("window.__RINGMINE_API_URL__", JSON.stringify(selfUrl));
+        return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache, no-store, must-revalidate" } });
+      }
+    } catch (e) { console.error("HTML fetch error:", e); }
+  }
+  return new Response("<h1>Ring Mine Mini App</h1><p>POST to interact. HTML not configured.</p>", { headers: { "Content-Type": "text/html" } });
 });

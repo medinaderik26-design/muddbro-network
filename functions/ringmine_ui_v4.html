@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Ring Mine</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#a0f0ff;font-family:'Courier New',monospace;max-width:500px;margin:0 auto;padding-bottom:80px;-webkit-tap-highlight-color:transparent}
+::-webkit-scrollbar{width:0}
+.card{background:#11121a;border:1px solid #1a3a5c;border-radius:8px;padding:12px;margin:8px}
+.btn{background:#1a3a5c;border:1px solid #2a5a8c;color:#a0f0ff;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:14px;width:100%;margin:4px 0;transition:background .15s}
+.btn:active{background:#2a5a8c}
+.btn-gold{background:#2a2a10;border-color:#ffd700;color:#ffd700}
+.btn-gold:active{background:#3a3a20}
+.btn-cyan{background:#0a2a3a;border-color:#a0f0ff;color:#a0f0ff}
+.btn-red{background:#3a0a0a;border-color:#ff4444;color:#ff4444}
+.tabs{display:flex;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:500px;background:#0a0a0f;border-top:1px solid #1a3a5c;z-index:100}
+.tab{flex:1;text-align:center;padding:10px 2px;color:#556;font-size:10px;cursor:pointer;border:none;background:none;font-family:inherit}
+.tab.active{color:#a0f0ff}
+.tab.active .ti{color:#a0f0ff;text-shadow:0 0 8px #a0f0ff66}
+.ti{font-size:20px;display:block;margin-bottom:2px;color:#556}
+.stat-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a2a3c}
+.stat-label{color:#6789ab}
+.stat-val{color:#a0f0ff;font-weight:bold}
+.glow{text-shadow:0 0 10px currentColor}
+.gold{color:#ffd700}.cyan{color:#a0f0ff}.red{color:#ff6666}.green{color:#66ff66}.muted{color:#556677}
+.companion-img{width:80px;height:80px;border-radius:50%;border:2px solid #a0f0ff;margin:0 auto 8px;display:block}
+.tap-btn{width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,#1a3a5c,#0a0a1a);border:2px solid #a0f0ff;color:#a0f0ff;font-size:16px;font-family:inherit;cursor:pointer;margin:16px auto;display:block;box-shadow:0 0 20px #a0f0ff33;transition:transform .1s}
+.tap-btn:active{transform:scale(0.95);box-shadow:0 0 30px #a0f0ff66}
+.float{position:fixed;pointer-events:none;font-weight:bold;animation:floatUp 1s ease-out forwards}
+@keyframes floatUp{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-60px)}}
+.mining-bar{height:4px;background:#1a2a3c;border-radius:2px;margin:8px 0;overflow:hidden}
+.mining-fill{height:100%;background:linear-gradient(90deg,#a0f0ff,#ffd700);border-radius:2px;transition:width .3s}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px}
+.badge-seed{background:#1a2a1a;color:#88aa88}.badge-glyph{background:#1a2a3a;color:#a0c0ff}.badge-resonant{background:#2a1a3a;color:#c0a0ff}.badge-hyper{background:#3a2a1a;color:#ffd700}.badge-monument{background:#3a1a1a;color:#ff8844}
+.lb-row{display:flex;align-items:center;padding:6px 8px;border-bottom:1px solid #1a2a3c}
+.lb-rank{width:28px;text-align:center;font-weight:bold;color:#ffd700}
+.lb-info{flex:1;padding-left:8px}
+.lb-xp{color:#6789ab;font-size:12px}
+.hidden{display:none}
+h2{font-size:16px;margin-bottom:8px;color:#a0f0ff}
+h3{font-size:14px;margin:8px 0;color:#ffd700}
+input,select{background:#11121a;color:#a0f0ff;border:1px solid #1a3a5c;padding:10px;border-radius:6px;width:100%;margin:4px 0;font-family:inherit;font-size:14px}
+.hist-row{padding:6px 0;border-bottom:1px solid #1a2a3c;font-size:12px}
+.hist-date{color:#556677;font-size:10px}
+.hist-status{text-align:right;font-weight:bold}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="tabs" id="tabs">
+<button class="tab active" data-t="mine"><span class="ti">⛏️</span>Mine</button>
+<button class="tab" data-t="glyph"><span class="ti">🔮</span>Glyph</button>
+<button class="tab" data-t="casino"><span class="ti">🎲</span>Casino</button>
+<button class="tab" data-t="forge"><span class="ti">🔨</span>Forge</button>
+<button class="tab" data-t="wallet"><span class="ti">💰</span>Wallet</button>
+<button class="tab" data-t="stats"><span class="ti">📊</span>Stats</button>
+</div>
+<script>
+const API=window.__RINGMINE_API_URL__||location.origin;
+let P=null,GL=null,GE=[],LB=[],WH=[];
+const TID=window.Telegram?.WebApp?.initDataUnsafe?.user?.id||"test123";
+
+async function api(a,d={}){try{const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:a,telegram_id:String(TID),...d})});return await r.json();}catch(e){return{ok:false,error:String(e)};}}
+
+async function load(){const d=await api("load");if(d.ok&&d.player)P=d.player;}
+async function loadGlyph(){const d=await api("load_glyph");if(d.ok)GL=d;}
+async function loadGear(){const d=await api("load_gear");if(d.ok)GE=d.gear||[];}
+async function loadLB(){const d=await api("leaderboard");if(d.ok)LB=d.leaderboard||[];}
+async function loadHistory(){const d=await api("get_history");if(d.ok)WH=d.history||[];}
+
+function badge(s){const m={Seed:"badge-seed",Glyph:"badge-glyph",Resonant:"badge-resonant",Hyperstate:"badge-hyper",Monument:"badge-monument"};return `<span class="badge ${m[s]||"badge-seed"}">${s||"Seed"}</span>`;}
+
+function floatText(txt,e){const r=e.getBoundingClientRect();const f=document.createElement("div");f.className="float";f.textContent=txt;f.style.left=r.left+r.width/2+"px";f.style.top=r.top+"px";f.style.color=txt.includes("-")?"#ff6666":"#66ff66";document.body.appendChild(f);setTimeout(()=>f.remove(),1000);}
+
+async function doMine(){const btn=document.getElementById("mineBtn");const r=await api("mine");if(r.ok){P.mudd_ore_balance=r.new_balance;floatText("+"+r.yield+" ore",btn);updateMine();}}
+
+function updateMine(){const el=document.getElementById("mineOre");if(el)el.textContent=P?.mudd_ore_balance||0;}
+
+function renderMine(){return `<div class="card"><h2>⛏️ Mining</h2><p class="muted">Tap to mine MuddOre from the deep earth</p><button class="tap-btn" id="mineBtn" onclick="doMine()">MINE</button><div class="stat-row"><span class="stat-label">MuddOre</span><span class="stat-val cyan" id="mineOre">${P?.mudd_ore_balance||0}</span></div><div class="stat-row"><span class="stat-label">Claimable MUDD</span><span class="stat-val gold">${Math.floor((P?.mudd_ore_balance||0)/1000)}</span></div>${GL?`<div class="stat-row"><span class="stat-label">Glyph State</span><span>${badge(GL.glyph_state)}</span></div><div class="stat-row"><span class="stat-label">Glyph Bonus</span><span class="stat-val green">${GL.glyph_state==="Seed"?"0%":GL.glyph_state==="Glyph"?"2%":GL.glyph_state==="Resonant"?"5%":GL.glyph_state==="Hyperstate"?"10%":"20%"}</span></div>`:""}${P?.companion?`<div class="stat-row"><span class="stat-label">Companion</span><span class="stat-val">${P.companion}</span></div>`:""}</div>`;}
+
+function renderGlyph(){if(!GL)return `<div class="card"><h2>🔮 Glyphin</h2><p class="muted">Journal in the bot to begin glyph progression.</p></div>`;const seeds=GL.glyph_seeds||[];const lineage=GL.glyph_lineage||[];const anchors=GL.resonance_anchors||[];return `<div class="card"><h2>🔮 Glyphin State</h2><div style="text-align:center;padding:12px"><div style="font-size:28px;margin:8px">${badge(GL.glyph_state)}</div><div class="muted">Cohesion: ${GL.glyph_cohesion||0}</div></div><div class="stat-row"><span class="stat-label">Queen</span><span class="stat-val">${GL.queen_name||"The Queen"}</span></div><div class="stat-row"><span class="stat-label">Bond</span><span class="stat-val gold">${GL.queen_bond||0}</span></div><div class="stat-row"><span class="stat-label">Streak</span><span class="stat-val">${GL.streak_days||0} days</span></div>${seeds.length?`<h3>Seeds (${seeds.length})</h3>${seeds.slice(-5).map(s=>`<div class="card" style="margin:4px 0;padding:8px"><div class="muted" style="font-size:11px">${s.mood||"neutral"}</div><div style="font-size:13px">${(s.entry||"").slice(0,80)}...</div></div>`).join("")}`:""}${anchors.length?`<h3>Resonance Anchors</h3>${anchors.slice(0,8).map(a=>`<div class="stat-row"><span class="stat-label">${a.keyword}</span><span class="stat-val">×${a.count}</span></div>`).join("")}`:""}${lineage.length?`<h3>Lineage</h3>${lineage.map(l=>`<div class="muted" style="font-size:12px">${l.from_state} → ${l.to_state}: ${l.reason}</div>`).join("")}`:""}</div>`;}
+
+function renderCasino(){const ore=P?.mudd_ore_balance||0;return `<div class="card"><h2>🎲 Ancient Wagers</h2><p class="muted">All wagers use MuddOre (non-blockchain)</p><div class="stat-row"><span class="stat-label">Your MuddOre</span><span class="stat-val cyan">${ore}</span></div></div><div class="card"><h3>🪙 Coin Flip</h3><p class="muted">Heads or tails. Win 2× your bet.</p><div class="grid2"><button class="btn btn-cyan" onclick="doFlip('heads')">Heads</button><button class="btn btn-cyan" onclick="doFlip('tails')">Tails</button></div><select id="flipBet"><option value="10">10 MuddOre</option><option value="50">50 MuddOre</option><option value="100">100 MuddOre</option><option value="500">500 MuddOre</option></select><div id="flipResult"></div></div><div class="card"><h3>🎰 Crystal Slots</h3><p class="muted">3 symbols. Match all 3 for 10× jackpot.</p><button class="btn btn-gold" onclick="doSlots()">Spin (50 ore)</button><div id="slotsResult" style="text-align:center;font-size:32px;padding:12px;min-height:48px"></div></div><div class="card"><h3>🎲 Dice Roll</h3><p class="muted">Pick a target 2-98. Roll under to win.</p><input id="diceTarget" type="range" min="2" max="98" value="50" oninput="document.getElementById('diceVal').textContent=this.value;document.getElementById('diceMult').textContent=(99/(this.value-1)).toFixed(1)+'×'"><div style="text-align:center;font-size:20px;color:#a0f0ff">Roll under <span id="diceVal">50</span> · <span id="diceMult">2.0×</span></div><select id="diceBet"><option value="10">10 MuddOre</option><option value="50">50 MuddOre</option><option value="100">100 MuddOre</option><option value="500">500 MuddOre</option></select><button class="btn btn-cyan" onclick="doDice()">Roll Dice</button><div id="diceResult"></div></div>`;}
+
+async function doFlip(side){const bet=parseInt(document.getElementById("flipBet").value);const r=await api("casino_flip",{choice:side,bet});const el=document.getElementById("flipResult");if(r.ok){P.mudd_ore_balance=r.new_balance;updateMine();el.innerHTML=`<div style="text-align:center;padding:8px;font-size:18px" class="${r.won?"green":"red"}">${r.won?"🎉 WIN":"💔 LOSS"}</div><div class="muted" style="text-align:center">Result: ${r.result} | ${r.message}</div>${r.sable_bonus?`<div class="gold" style="text-align:center">Sable bonus: +${r.sable_bonus}!</div>`:""}`;}else el.innerHTML=`<div class="red">${r.error}</div>`;}
+
+async function doSlots(){const r=await api("casino_slots",{bet:50});const el=document.getElementById("slotsResult");if(r.ok){P.mudd_ore_balance=r.new_balance;updateMine();el.innerHTML=r.symbols.join(" ");if(r.payout>0){floatText("+"+r.payout+" ore",el);el.innerHTML+=`<div class="green" style="font-size:14px">🎉 ${r.payout} MuddOre!${r.sable_bonus?" Sable +"+r.sable_bonus:""}</div>`;}else{el.innerHTML+=`<div class="muted" style="font-size:12px">No match</div>`;}}}
+
+async function doDice(){const target=parseInt(document.getElementById("diceTarget").value);const bet=parseInt(document.getElementById("diceBet").value);const r=await api("casino_dice",{target,bet});const el=document.getElementById("diceResult");if(r.ok){P.mudd_ore_balance=r.new_balance;updateMine();el.innerHTML=`<div style="text-align:center;padding:8px"><span class="${r.won?"green":"red"}" style="font-size:18px">🎲 ${r.roll}</span><div class="muted">${r.won?"Under "+target+" — WIN!":"Over "+target+" — LOSS"}</div><div class="${r.won?"green":"red"}">${r.message}</div></div>`;}else el.innerHTML=`<div class="red">${r.error}</div>`;}
+
+function renderForge(){return `<div class="card"><h2>🔨 MudForge</h2><div class="stat-row"><span class="stat-label">MUDD Balance</span><span class="stat-val gold">${P?.mudd_balance||0}</span></div><div class="stat-row"><span class="stat-label">Total Burned</span><span class="stat-val red">${P?.total_mudd_burned||0}</span></div><p class="muted" style="margin:8px 0">Spend 200 MUDD to forge random gear. 30% permanently burned.</p><button class="btn btn-gold" onclick="doForge()">Forge Gear (200 MUDD)</button><div id="forgeResult"></div></div><div class="card"><h3>🎒 Your Gear</h3><div id="gearList">${GE.map(g=>`<div class="stat-row"><span>${g.equipped?"✅":""} ${g.name}</span><span class="muted">${g.rarity} · +${g.mining_bonus}%</span></div>`).join("")||"<p class='muted'>No gear yet.</p>"}</div></div>`;}
+
+async function doForge(){const r=await api("forge");const el=document.getElementById("forgeResult");if(r.ok){P.mudd_balance=r.mudd_balance;P.total_mudd_burned=r.total_burned;await loadGear();renderForge();el.innerHTML=`<div class="green" style="padding:8px">✅ ${r.message}</div>`;}else el.innerHTML=`<div class="red">${r.error||"Need 200 MUDD to forge"}</div>`;}
+
+function renderWallet(){const ore=P?.mudd_ore_balance||0;const mudd=P?.mudd_balance||0;const claimable=Math.floor(ore/1000);const wallet=P?.ton_wallet_address||"";const totalW=P?.total_withdrawn||0;return `<div class="card"><h2>💰 Wallet</h2><div class="stat-row"><span class="stat-label">MuddOre</span><span class="stat-val cyan">${ore}</span></div><div class="stat-row"><span class="stat-label">MUDD (in-game)</span><span class="stat-val gold">${mudd}</span></div><div class="stat-row"><span class="stat-label">Claimable MUDD</span><span class="stat-val green">${claimable}</span></div><div class="stat-row"><span class="stat-label">Total Withdrawn</span><span class="stat-val muted">${totalW}</span></div></div>${claimable>0?`<div class="card"><h3>🔄 Convert MuddOre → MUDD</h3><p class="muted">1000 MuddOre = 1 MUDD (in-game)</p><button class="btn btn-cyan" onclick="doConvert()">Convert ${claimable*1000} → ${claimable} MUDD</button><div id="convertResult"></div></div>`:""}${wallet?`<div class="card"><h3>⛓️ TON Wallet</h3><div class="muted" style="font-size:11px;word-break:break-all">${wallet}</div></div><div class="card"><h3>📤 Withdraw MUDD to TON</h3><p class="muted">Min: 1000 MuddOre = 1 MUDD. Rate: 1000:1</p><div class="stat-row"><span class="stat-label">Available MuddOre</span><span class="stat-val cyan">${ore}</span></div><select id="withdrawAmount"><option value="1000">1,000 MuddOre → 1 MUDD</option>${ore>=2000?`<option value="2000">2,000 MuddOre → 2 MUDD</option>`:""}${ore>=5000?`<option value="5000">5,000 MuddOre → 5 MUDD</option>`:""}${ore>=10000?`<option value="10000">10,000 MuddOre → 10 MUDD</option>`:""}${ore>0?`<option value="${Math.floor(ore/1000)*1000}">All (${Math.floor(ore/1000)*1000} → ${Math.floor(ore/1000)} MUDD)</option>`:""}</select><button class="btn btn-gold" onclick="doWithdraw()" id="withdrawBtn">Withdraw MUDD</button><div id="withdrawResult"></div></div>`:`<div class="card"><h3>Link TON Wallet</h3><p class="muted">Link your wallet to withdraw MUDD on-chain</p><input id="walletInput" placeholder="TON address (UQ... or EQ...)"><button class="btn btn-cyan" onclick="doLink()">Link Wallet</button><div id="linkResult"></div></div>`}<div class="card"><h3>📜 Withdrawal History</h3>${WH.length?WH.slice(0,10).map(h=>`<div class="hist-row"><div class="hist-date">${(h.date||"").substring(0,19)}</div><div class="stat-row"><span class="stat-label">${h.mudd_amount||0} MUDD → ${(h.dest_address||"").substring(0,12)}...</span><span class="hist-status ${h.status==="success"?"green":h.status==="pending"?"gold":"red"}">${h.status||"unknown"}</span></div></div>`).join(""):"<p class='muted'>No withdrawals yet.</p>"}</div><div class="card"><h3>🌍 Inner Earth</h3><p class="muted">Your passport bridges Ring Mine and Inner Earth. Same companion, same MUDD, same glyph state.</p><div class="stat-row"><span class="stat-label">Companion</span><span class="stat-val">${P?.companion||"None"}</span></div><div class="stat-row"><span class="stat-label">Glyph State</span><span>${badge(GL?.glyph_state)}</span></div></div>`;}
+
+async function doConvert(){const r=await api("convert_ore",{mudd_ore_amount:Math.floor((P?.mudd_ore_balance||0)/1000)*1000});const el=document.getElementById("convertResult");if(r.ok){await load();renderWallet();el.innerHTML=`<div class="green">✅ ${r.message||"Converted!"}</div>`;}else el.innerHTML=`<div class="red">${r.error}</div>`;}
+
+async function doLink(){const addr=document.getElementById("walletInput").value.trim();const r=await api("link_wallet",{wallet_address:addr});const el=document.getElementById("linkResult");if(r.ok){P.ton_wallet_address=addr;el.innerHTML=`<div class="green">✅ Wallet linked!</div>`;renderWallet();}else el.innerHTML=`<div class="red">${r.error}</div>`;}
+
+async function doWithdraw(){const amount=parseInt(document.getElementById("withdrawAmount").value);const btn=document.getElementById("withdrawBtn");if(btn)btn.textContent="Sending...";const el=document.getElementById("withdrawResult");const r=await api("withdraw",{mudd_ore_amount:amount});if(r.ok){el.innerHTML=`<div class="green" style="padding:8px">✅ ${r.message||"Withdrawal initiated"}<br><span class="muted">Status: ${r.status||"success"}</span></div>`;await load();await loadHistory();renderWallet();}else{el.innerHTML=`<div class="red">${r.error||"Withdrawal failed"}</div>`;}if(btn)btn.textContent="Withdraw MUDD";}
+
+const COMP_IMG={Sable:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/462a39c02_sable.jpg",Kaelith:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/4a7d2af71_kaelith.jpg",Vespera:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/def4188d6_vespera.jpg",Lirien:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/507d8e351_lirien.jpg",Thorne:"https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/7fec8feb4_thorne.jpg"};
+
+function renderStats(){const comp=P?.companion;const compImg=comp&&COMP_IMG[comp]?`<img class="companion-img" src="${COMP_IMG[comp]}" alt="${comp}">`:"";return `<div class="card"><h2>📊 ${P?.username||P?.full_name||"Seeker"}</h2>${compImg}${comp?`<div style="text-align:center;margin-bottom:8px"><span class="stat-val gold">${comp}</span><div class="muted">Bond: ${P?.companion_bond||0}</div></div>`:"<p class='muted' style='text-align:center'>No companion bonded yet</p>"}<div class="stat-row"><span class="stat-label">Growth XP</span><span class="stat-val">${P?.growth_xp||0}</span></div><div class="stat-row"><span class="stat-label">Streak</span><span class="stat-val">${P?.streak_days||0} days</span></div><div class="stat-row"><span class="stat-label">MuddOre</span><span class="stat-val cyan">${P?.mudd_ore_balance||0}</span></div><div class="stat-row"><span class="stat-label">MUDD</span><span class="stat-val gold">${P?.mudd_balance||0}</span></div><div class="stat-row"><span class="stat-label">Burned</span><span class="stat-val red">${P?.total_mudd_burned||0}</span></div></div><div class="card"><h3>🏆 Leaderboard</h3>${LB.length?LB.slice(0,10).map((p,i)=>`<div class="lb-row"><span class="lb-rank">${i+1}</span><div class="lb-info"><div class="stat-val">${p.username}</div><div class="lb-xp">${p.xp} XP · ${p.mudd} MUDD ${p.companion?"· "+p.companion:""} ${p.glyph?"· "+p.glyph:""}</div></div></div>`).join(""):"<p class='muted'>Loading...</p>"}</div>`;}
+
+const R={mine:renderMine,glyph:renderGlyph,casino:renderCasino,forge:renderForge,wallet:renderWallet,stats:renderStats};
+let curTab="mine";
+
+function showTab(t){curTab=t;document.getElementById("app").innerHTML=R[t]();document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.t===t));if(t==="stats"&&!LB.length)loadLB().then(()=>{if(curTab==="stats")document.getElementById("app").innerHTML=renderStats();});if(t==="wallet")loadHistory().then(()=>{if(curTab==="wallet")document.getElementById("app").innerHTML=renderWallet();});}
+
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>showTab(b.dataset.t));
+
+async function init(){await load();await loadGlyph();await loadGear();showTab("mine");}
+init();
+</script>
+</body>
+</html>
