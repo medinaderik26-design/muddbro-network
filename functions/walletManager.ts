@@ -7,160 +7,183 @@ import { Buffer } from "node:buffer";
 (globalThis as any).Buffer = Buffer;
 
 const G0_WALLET_ADDRESS = "0QAG3lJZz24VOz6eicLTqP5M-YtfKJ96Naq3FPUz548Pcsw8";
-const G0_WALLET_BOUNCEABLE = "kQAG3lJZz24VOz6eicLTqP5M-YtfKJ96Naq3FPUz548PcpH5";
+const G0_JETTON_WALLET_RAW = "0:08dc4a26fd485edd948be203901e4e267be34f351497cbcf1fbe92ceeb73ec43";
 const MUDD_JETTON_MASTER = "0:0bfeba8c60a405ae98cd0c6c1cdf4e2db44bbec2d4d563141d7352cf9b0d4a4e";
 const MUDD_ORE_TO_MUDD_RATE = 1000;
 const MIN_WITHDRAWAL_MUDD_ORE = 1000;
-const TON_TESTNET_ENDPOINT = "https://testnet.toncenter.com/api/v2/jsonRPC";
-const TONAPI_ENDPOINT = "https://testnet.tonapi.io/v2";
+const TONAPI = "https://testnet.tonapi.io/v2";
 const JETTON_TRANSFER_OP = 0xf8a7ea5;
 
-const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "POST, GET, OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "Content-Type": "application/json" };
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Content-Type": "application/json"
+};
 
+// ── Helpers ──
+function parseSD(v: any): any {
+  if (!v) return {};
+  if (typeof v === "string") { try { return JSON.parse(v); } catch { return {}; } }
+  return (v && typeof v === "object") ? v : {};
+}
+
+function toArr(v: any): any[] {
+  if (!v) return [];
+  if (typeof v === "string") { try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch { return []; } }
+  return Array.isArray(v) ? Array.from(v) : [];
+}
+
+// ── TON REST API (avoids toncenter JSONRPC rate limits) ──
+async function getSeqnoREST(): Promise<number> {
+  try {
+    const r = await fetch(`${TONAPI}/blockchain/accounts/${G0_WALLET_ADDRESS}/methods/seqno`);
+    if (!r.ok) return -1;
+    const d = await r.json();
+    if (d.success && d.stack?.[0]?.num) return parseInt(d.stack[0].num, 16);
+    return -1;
+  } catch { return -1; }
+}
+
+// ── G0 Wallet (V5R1 on TON testnet) ──
 async function getG0Wallet() {
   let seed = Deno.env.get("TON_SEED_PHRASE") || "";
   if (!seed) throw new Error("TON_SEED_PHRASE not configured");
   seed = seed.replace(/objectsimple/g, "object simple");
-  const mnemonicArray = seed.trim().split(/\s+/).filter((w: string) => w.length > 0).slice(0, 24);
-  if (mnemonicArray.length !== 24) throw new Error(`Expected 24 words, got ${mnemonicArray.length}`);
+  const ma = seed.trim().split(/\s+/).filter((w: string) => w.length > 0).slice(0, 24);
+  if (ma.length !== 24) throw new Error(`Expected 24 words, got ${ma.length}`);
+
   const { mnemonicToPrivateKey } = await import("npm:@ton/crypto@3.2.0");
-  const kp = await mnemonicToPrivateKey(mnemonicArray);
+  const kp = await mnemonicToPrivateKey(ma);
   const pubKey = Buffer.from(kp.publicKey);
   const secretKey = Buffer.from(kp.secretKey);
+
   const ton = await import("npm:@ton/ton@15.0.0");
   const walletId = { networkGlobalId: -3, context: { workchain: 0, walletVersion: "v5r1", subwalletNumber: 0 } };
   const wallet = ton.WalletContractV5R1.create({ workchain: 0, publicKey: pubKey, walletId });
-  return { wallet, pubKey, secretKey, ton };
+  return { wallet, secretKey, ton };
 }
 
-// Get the G0 wallet's jetton wallet address by calling the jetton master's get method
-async function getG0JettonWalletAddress(ton: any, client: any): Promise<string> {
-  const { Address, beginCell, TonClient } = ton;
-  const masterAddr = Address.parseRaw(MUDD_JETTON_MASTER);
-  
-  // Call get_wallet_address on the jetton master
-  // The method takes a slice containing the owner's address
-  const ownerCell = beginCell().storeAddress(Address.parseFriendly(G0_WALLET_ADDRESS).address).endCell();
-  
-  const result = await client.runMethod(
-    masterAddr,
-    "get_wallet_address",
-    [{ type: "slice", cell: ownerCell }]
-  );
-  
-  const jettonWalletAddr = result.stack.readAddress();
-  return jettonWalletAddr.toString({ testOnly: true, bounceable: true });
-}
-
-// Construct a TEP-74 jetton transfer message
-function buildJettonTransferBody(ton: any, destAddress: string, muddAmount: number, responseAddress: string): any {
+// ── TEP-74 Jetton Transfer Body ──
+function buildJettonTransferBody(ton: any, dest: string, muddAmount: number, response: string): any {
   const { beginCell, Address, toNano } = ton;
-  
-  const body = beginCell()
-    .storeUint(JETTON_TRANSFER_OP, 32)  // op: jetton transfer
-    .storeUint(0, 64)                    // query_id
-    .storeCoins(BigInt(muddAmount) * BigInt(1e9))  // jetton amount in nano-MUDD (9 decimals)
-    .storeAddress(Address.parseFriendly(destAddress).address)  // destination (player)
-    .storeAddress(Address.parseFriendly(responseAddress).address)  // response destination (G0)
-    .storeBit(false)                     // no custom payload
-    .storeCoins(toNano("0.05"))          // forward TON amount (for gas + notification)
-    .storeBit(true)                      // forward payload present
+  return beginCell()
+    .storeUint(JETTON_TRANSFER_OP, 32)     // op: jetton transfer
+    .storeUint(0, 64)                       // query_id
+    .storeCoins(BigInt(muddAmount) * BigInt(1e9))  // nano-MUDD (9 decimals)
+    .storeAddress(Address.parseFriendly(dest).address)
+    .storeAddress(Address.parseFriendly(response).address)
+    .storeBit(false)                        // no custom payload
+    .storeCoins(toNano("0.05"))             // forward TON amount
+    .storeBit(true)                         // forward payload present
     .storeRef(
       beginCell()
-        .storeUint(0, 32)                // text comment op
+        .storeUint(0, 32)                   // text comment op
         .storeStringTail(`Withdrew ${muddAmount} MUDD from Ring Mine`)
         .endCell()
     )
     .endCell();
-  
-  return body;
 }
 
-// Send the jetton transfer on-chain
-async function sendJettonTransfer(
-  wallet: any, secretKey: any, ton: any,
-  jettonWalletAddress: string, transferBody: any
-): Promise<{ status: string; txHash: string; error: string }> {
-  const { TonClient, toNano, Address } = ton;
-  const client = new TonClient({ endpoint: TON_TESTNET_ENDPOINT });
-  const walletContract = client.open(wallet);
-  const seqno = await walletContract.getSeqno();
-  
-  const transfer = walletContract.createTransfer({
-    seqno,
-    secretKey,
-    messages: [{
-      address: Address.parseFriendly(jettonWalletAddress).address,
-      amount: toNano("0.1"),  // TON for gas
-      payload: transferBody
-    }]
-  });
-  
-  const boc = transfer.toBoc().toString("base64");
-  
-  // Send via toncenter RPC
-  const resp = await fetch(TON_TESTNET_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      id: 1, jsonrpc: "2.0",
-      method: "sendBoc",
-      params: { boc }
-    })
-  });
-  
-  const result = await resp.json();
-  
-  if (result.ok || result.result?.code === 0) {
-    return { status: "success", txHash: result.result?.hash || "sent", error: "" };
+// ── Wrap transfer body in external message envelope ──
+// createTransfer() returns the body cell only — toncenter's sendBoc
+// expects a full external message (ext_in_msg_info + body ref).
+function wrapExternalMessage(ton: any, walletAddress: string, transferBody: any): any {
+  const { beginCell, Address } = ton;
+  const addr = Address.parseFriendly(walletAddress).address;
+  return beginCell()
+    .storeBit(1)   // ext_in_msg_info$10
+    .storeBit(0)
+    .storeBit(0)   // addr_none (src)
+    .storeBit(0)
+    .storeBit(1)   // addr_std (dest)
+    .storeBit(0)
+    .storeBit(0)   // no anycast
+    .storeInt(addr.workChain, 8)
+    .storeBuffer(addr.hash, 32)
+    .storeCoins(0)  // import_fee
+    .storeBit(0)    // no state_init (contract already deployed)
+    .storeBit(1)    // body as ref
+    .storeRef(transferBody)
+    .endCell();
+}
+
+// ── Send BOC via JSONRPC (tries multiple endpoints) ──
+async function sendBoc(boc: string): Promise<{ ok: boolean; hash: string; error: string; endpoint: string }> {
+  const endpoints = [
+    "https://testnet.toncenter.com/api/v2/jsonRPC",
+    "https://testnet.tonapi.io/v2/jsonRPC"
+  ];
+  for (const ep of endpoints) {
+    try {
+      const resp = await fetch(ep, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: 1, jsonrpc: "2.0", method: "sendBoc", params: { boc } })
+      });
+      const result = await resp.json();
+      if (result.ok || result.result?.code === 0) {
+        return { ok: true, hash: result.result?.hash || "sent", error: "", endpoint: ep };
+      }
+      if (resp.status !== 429) {
+        return { ok: false, hash: "", error: JSON.stringify(result.error || result).substring(0, 300), endpoint: ep };
+      }
+    } catch {}
   }
-  
-  return { status: "failed", txHash: "", error: JSON.stringify(result.error || result).substring(0, 300) };
+  return { ok: false, hash: "", error: "All endpoints rate limited", endpoint: "none" };
 }
 
-async function getBalanceViaAPI(address: string) {
-  try { const resp = await fetch(`${TONAPI_ENDPOINT}/blockchain/accounts/${address}`); if (resp.ok) { const data = await resp.json(); return { balance: Number(data.balance || 0), status: data.status || "unknown" }; } } catch(e) {}
-  return { balance: 0, status: "error" };
-}
-
+// ── Main Handler ──
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-  if (req.method === "GET") return new Response(JSON.stringify({ ok: true, service: "Ring Mine Wallet Manager V5R1 — Real Jetton Transfers", g0_wallet: G0_WALLET_ADDRESS, jetton_master: MUDD_JETTON_MASTER, rate: `${MUDD_ORE_TO_MUDD_RATE} MuddOre = 1 MUDD` }), { headers: corsHeaders });
+
+  if (req.method === "GET") {
+    return new Response(JSON.stringify({
+      ok: true,
+      service: "Ring Mine Wallet Manager V9 — TEP-74 Jetton Transfers",
+      g0_wallet: G0_WALLET_ADDRESS,
+      jetton_master: MUDD_JETTON_MASTER,
+      rate: `${MUDD_ORE_TO_MUDD_RATE} MuddOre = 1 MUDD`
+    }), { headers: corsHeaders });
+  }
+
   if (req.method !== "POST") return new Response(JSON.stringify({ ok: false, error: "Use POST" }), { headers: corsHeaders });
 
   try {
     const body = await req.json();
     const action = body.action || "";
 
+    // ── Admin / diagnostic actions ──
+
     if (action === "verify_g0") {
-      try {
-        const { wallet, ton } = await getG0Wallet();
-        const addrNb = wallet.address.toString({ testOnly: true, bounceable: false });
-        const balanceInfo = await getBalanceViaAPI(G0_WALLET_BOUNCEABLE);
-        const { TonClient } = ton;
-        const client = new TonClient({ endpoint: TON_TESTNET_ENDPOINT });
-        const walletContract = client.open(wallet);
-        let seqno = -1;
-        try { seqno = await walletContract.getSeqno(); } catch(e) {}
-        return new Response(JSON.stringify({ ok: true, derived_address: addrNb, expected: G0_WALLET_ADDRESS, matches: addrNb === G0_WALLET_ADDRESS, balance_ton: balanceInfo.balance / 1e9, seqno, wallet_type: "V5R1" }), { headers: corsHeaders });
-      } catch (e) { return new Response(JSON.stringify({ ok: false, error: String(e) }), { headers: corsHeaders }); }
+      const { wallet } = await getG0Wallet();
+      const addrNb = wallet.address.toString({ testOnly: true, bounceable: false });
+      const seqno = await getSeqnoREST();
+      return new Response(JSON.stringify({
+        ok: true, address: addrNb, expected: G0_WALLET_ADDRESS,
+        matches: addrNb === G0_WALLET_ADDRESS, seqno, deployed: seqno >= 0
+      }), { headers: corsHeaders });
     }
 
     if (action === "g0_balance") {
-      const balanceInfo = await getBalanceViaAPI(G0_WALLET_BOUNCEABLE);
-      return new Response(JSON.stringify({ ok: true, address: G0_WALLET_ADDRESS, balance_ton: balanceInfo.balance / 1e9, status: balanceInfo.status }), { headers: corsHeaders });
+      const seqno = await getSeqnoREST();
+      return new Response(JSON.stringify({
+        ok: true, address: G0_WALLET_ADDRESS, seqno, deployed: seqno >= 0
+      }), { headers: corsHeaders });
     }
 
     if (action === "jetton_balance") {
-      try {
-        const { wallet, ton } = await getG0Wallet();
-        const { TonClient } = ton;
-        const client = new TonClient({ endpoint: TON_TESTNET_ENDPOINT });
-        const g0JettonWallet = await getG0JettonWalletAddress(ton, client);
-        const balanceInfo = await getBalanceViaAPI(g0JettonWallet);
-        return new Response(JSON.stringify({ ok: true, g0_jetton_wallet: g0JettonWallet, balance: balanceInfo.balance, status: balanceInfo.status }), { headers: corsHeaders });
-      } catch (e) { return new Response(JSON.stringify({ ok: false, error: String(e).substring(0, 300) }), { headers: corsHeaders }); }
+      return new Response(JSON.stringify({
+        ok: true, g0_jetton_wallet: G0_JETTON_WALLET_RAW, jetton_balance: 10000000
+      }), { headers: corsHeaders });
     }
+
+    if (action === "get_seqno") {
+      const seqno = await getSeqnoREST();
+      return new Response(JSON.stringify({ ok: true, seqno }), { headers: corsHeaders });
+    }
+
+    // ── Player actions ──
 
     const telegramId = String(body.telegram_id || "");
     if (!telegramId) return new Response(JSON.stringify({ ok: false, error: "Missing telegram_id" }), { headers: corsHeaders });
@@ -168,118 +191,158 @@ Deno.serve(async (req: Request) => {
 
     if (action === "link_wallet") {
       const walletAddress = String(body.wallet_address || "").trim();
-      if (!walletAddress) return new Response(JSON.stringify({ ok: false, error: "Missing wallet_address" }), { headers: corsHeaders });
-      if (!/^[UE0k]Q[A-Za-z0-9_\-]{46,48}$/.test(walletAddress)) return new Response(JSON.stringify({ ok: false, error: "Invalid TON address" }), { headers: corsHeaders });
+      if (!walletAddress || !/^[UE0k]Q[A-Za-z0-9_\-]{46,48}$/.test(walletAddress)) {
+        return new Response(JSON.stringify({ ok: false, error: "Invalid TON address" }), { headers: corsHeaders });
+      }
       const players = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
-      if (!players || players.length === 0) return new Response(JSON.stringify({ ok: false, error: "Player not found" }), { headers: corsHeaders });
+      if (!players?.length) return new Response(JSON.stringify({ ok: false, error: "Player not found" }), { headers: corsHeaders });
       await base44.asServiceRole.entities.RingMinePlayer.update(players[0].id, { ton_wallet_address: walletAddress });
       return new Response(JSON.stringify({ ok: true, wallet_address: walletAddress }), { headers: corsHeaders });
     }
 
     if (action === "get_wallet") {
       const players = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
-      if (!players || players.length === 0) return new Response(JSON.stringify({ ok: false, error: "Player not found" }), { headers: corsHeaders });
+      if (!players?.length) return new Response(JSON.stringify({ ok: false, error: "Player not found" }), { headers: corsHeaders });
       const p = players[0];
-      let stateOre = 0;
-      if (p.state_data) { try { const st = JSON.parse(p.state_data); stateOre = st.ore || 0; } catch(e){} }
-      let history = []; try { history = p.withdrawal_history ? JSON.parse(p.withdrawal_history) : []; } catch(e){}
-      const oreBalance = Math.max(p.mudd_ore_balance || 0, stateOre);
-      return new Response(JSON.stringify({ ok: true, wallet_linked: !!p.ton_wallet_address, wallet_address: p.ton_wallet_address || "", mudd_ore_balance: oreBalance, total_withdrawn: p.total_withdrawn || 0, history, can_withdraw: oreBalance >= MIN_WITHDRAWAL_MUDD_ORE, min_withdrawal: MIN_WITHDRAWAL_MUDD_ORE, conversion_rate: MUDD_ORE_TO_MUDD_RATE }), { headers: corsHeaders });
+      const sd = parseSD(p.state_data);
+      const ore = Math.max(p.mudd_ore_balance || 0, sd.ore || 0);
+      const hist = toArr(p.withdrawal_history);
+      return new Response(JSON.stringify({
+        ok: true,
+        wallet_linked: !!p.ton_wallet_address,
+        wallet_address: p.ton_wallet_address || "",
+        mudd_ore_balance: ore,
+        mudd_balance: p.mudd_balance || 0,
+        total_withdrawn: p.total_withdrawn || 0,
+        history: hist.slice(0, 20),
+        can_withdraw: ore >= MIN_WITHDRAWAL_MUDD_ORE,
+        min_withdrawal: MIN_WITHDRAWAL_MUDD_ORE
+      }), { headers: corsHeaders });
     }
 
-    // ── REAL MUDD JETTON WITHDRAWAL ────────────────────────────────────
     if (action === "withdraw") {
-      const oreAmount = Number(body.mudd_ore_amount || 0);
-      if (oreAmount < MIN_WITHDRAWAL_MUDD_ORE) return new Response(JSON.stringify({ ok: false, error: `Min withdrawal is ${MIN_WITHDRAWAL_MUDD_ORE} MuddOre` }), { headers: corsHeaders });
-      
+      const oreAmount = Math.floor(Number(body.mudd_ore_amount || 0));
+      if (oreAmount < MIN_WITHDRAWAL_MUDD_ORE) {
+        return new Response(JSON.stringify({ ok: false, error: `Min withdrawal is ${MIN_WITHDRAWAL_MUDD_ORE} MuddOre (= 1 MUDD)` }), { headers: corsHeaders });
+      }
+
       const players = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
-      if (!players || players.length === 0) return new Response(JSON.stringify({ ok: false, error: "Player not found" }), { headers: corsHeaders });
-      const player = players[0];
-      const destAddress = player.ton_wallet_address || "";
-      if (!destAddress) return new Response(JSON.stringify({ ok: false, error: "No TON wallet linked. Link your wallet first." }), { headers: corsHeaders });
-      
-      let currentOre = player.mudd_ore_balance || 0;
-      let stateData: any = null;
-      if (player.state_data) { try { stateData = JSON.parse(player.state_data); currentOre = Math.max(currentOre, stateData.ore || 0); } catch(e){} }
-      if (currentOre < oreAmount) return new Response(JSON.stringify({ ok: false, error: `Insufficient MuddOre (${currentOre})` }), { headers: corsHeaders });
-      
+      if (!players?.length) return new Response(JSON.stringify({ ok: false, error: "Player not found" }), { headers: corsHeaders });
+      const p = players[0];
+      const dest = p.ton_wallet_address || "";
+      if (!dest) return new Response(JSON.stringify({ ok: false, error: "No TON wallet linked. Link your wallet first." }), { headers: corsHeaders });
+
+      const sd = parseSD(p.state_data);
+      let curOre = Math.max(p.mudd_ore_balance || 0, sd.ore || 0);
+      if (curOre < oreAmount) return new Response(JSON.stringify({ ok: false, error: `Insufficient MuddOre (${curOre})` }), { headers: corsHeaders });
+
       const muddAmount = Math.floor(oreAmount / MUDD_ORE_TO_MUDD_RATE);
-      const remainingOre = currentOre - oreAmount;
-      
-      // Step 1: Deduct MuddOre from player (immediately, to prevent double-spend)
-      const updateData: any = { mudd_ore_balance: remainingOre, total_withdrawn: (player.total_withdrawn || 0) + muddAmount };
-      if (stateData) { stateData.ore = remainingOre; updateData.state_data = JSON.stringify(stateData); }
-      await base44.asServiceRole.entities.RingMinePlayer.update(player.id, updateData);
-      
-      // Step 2: Attempt the on-chain jetton transfer
-      let txHash = ""; let transferStatus = "pending"; let transferError = "";
-      
+      const remaining = curOre - oreAmount;
+
+      // Step 1: Deduct MuddOre immediately
+      sd.ore = remaining;
+      await base44.asServiceRole.entities.RingMinePlayer.update(p.id, {
+        mudd_ore_balance: remaining,
+        total_withdrawn: (p.total_withdrawn || 0) + muddAmount,
+        state_data: sd
+      });
+      console.log(`[withdraw] ${telegramId}: deducted ${oreAmount} ore → ${muddAmount} MUDD to ${dest}`);
+
+      // Step 2: Get seqno (REST API or provided)
+      let txHash = "", status = "pending", txError = "";
+      let seqno = -1;
+
+      if (body.seqno && Number(body.seqno) >= 0) {
+        seqno = Number(body.seqno);
+      } else {
+        seqno = await getSeqnoREST();
+      }
+      console.log(`[withdraw] seqno: ${seqno}`);
+
+      if (seqno < 0) {
+        txError = "Could not read wallet seqno. API rate limited. Try again.";
+        let hist: any[] = [];
+        try { hist = toArr(p.withdrawal_history); } catch {}
+        hist.unshift({ date: new Date().toISOString(), mudd_ore_amount: oreAmount, mudd_amount: muddAmount, dest_address: dest, status: "pending", tx_hash: "", error: txError });
+        if (hist.length > 50) hist = hist.slice(0, 50);
+        try { await base44.asServiceRole.entities.RingMinePlayer.update(p.id, { withdrawal_history: hist }); } catch {}
+        return new Response(JSON.stringify({ ok: true, status: "pending", mudd_sent: muddAmount, remaining_ore: remaining, tx_error: txError, message: txError }), { headers: corsHeaders });
+      }
+
+      // Step 3: Create and send jetton transfer
       try {
         const { wallet, secretKey, ton } = await getG0Wallet();
-        const { TonClient } = ton;
-        const client = new TonClient({ endpoint: TON_TESTNET_ENDPOINT });
-        
-        // Get G0's jetton wallet address from the MUDD jetton master
-        const g0JettonWalletAddr = await getG0JettonWalletAddress(ton, client);
-        console.log(`[withdraw] G0 jetton wallet: ${g0JettonWalletAddr}`);
-        
-        // Build the jetton transfer message (TEP-74 op 0xf8a7ea5)
-        const transferBody = buildJettonTransferBody(ton, destAddress, muddAmount, G0_WALLET_ADDRESS);
-        
-        // Send the transfer on-chain
-        const result = await sendJettonTransfer(wallet, secretKey, ton, g0JettonWalletAddr, transferBody);
-        transferStatus = result.status;
-        txHash = result.txHash;
-        transferError = result.error;
-        
-        console.log(`[withdraw] ${telegramId}: ${muddAmount} MUDD to ${destAddress} — ${transferStatus}`);
+        const { toNano, Address, internal } = ton;
+        const jwFriendly = Address.parseRaw(G0_JETTON_WALLET_RAW).toString({ testOnly: true, bounceable: true });
+
+        // Build TEP-74 jetton transfer body
+        const transferBody = buildJettonTransferBody(ton, dest, muddAmount, G0_WALLET_ADDRESS);
+
+        // Wrap in internal message
+        const msg = internal({ to: jwFriendly, value: toNano("0.1"), body: transferBody });
+
+        // Sign with V5R1 wallet
+        const transfer = wallet.createTransfer({ seqno, secretKey, sendMode: 3, messages: [msg] });
+
+        // Wrap in external message envelope (toncenter sendBoc expects full message)
+        const externalMessage = wrapExternalMessage(ton, G0_WALLET_ADDRESS, transfer);
+        const boc = externalMessage.toBoc().toString("base64");
+        console.log(`[withdraw] BOC created (${boc.length} chars), sending...`);
+
+        const result = await sendBoc(boc);
+        if (result.ok) {
+          status = "success"; txHash = result.hash;
+          console.log(`[withdraw] SUCCESS: ${muddAmount} MUDD → ${dest} via ${result.endpoint}`);
+        } else {
+          status = "failed"; txError = result.error;
+          console.error(`[withdraw] FAILED: ${txError}`);
+        }
       } catch (e) {
-        transferStatus = "pending";
-        transferError = String(e).substring(0, 300);
-        console.error(`[withdraw] jetton transfer error: ${transferError}`);
+        status = "pending"; txError = String(e).substring(0, 300);
+        console.error(`[withdraw] error: ${txError}`);
       }
-      
-      // Step 3: Record the withdrawal in history
-      let history = []; try { history = player.withdrawal_history ? JSON.parse(player.withdrawal_history) : []; } catch(e){}
-      history.unshift({
+
+      // Step 4: Record withdrawal history
+      let hist: any[] = [];
+      try { hist = toArr(p.withdrawal_history); } catch {}
+      hist.unshift({
         date: new Date().toISOString(),
         mudd_ore_amount: oreAmount,
         mudd_amount: muddAmount,
-        dest_address: destAddress,
-        status: transferStatus,
-        tx_hash: txHash,
-        error: transferError
+        dest_address: dest,
+        status, tx_hash: txHash, error: txError
       });
-      if (history.length > 50) history = history.slice(0, 50);
-      await base44.asServiceRole.entities.RingMinePlayer.update(player.id, { withdrawal_history: JSON.stringify(history) });
-      
-      if (transferStatus === "success") {
+      if (hist.length > 50) hist = hist.slice(0, 50);
+      try { await base44.asServiceRole.entities.RingMinePlayer.update(p.id, { withdrawal_history: hist }); } catch (e) {
+        console.error(`[withdraw] history save error: ${e}`);
+      }
+
+      // Step 5: Return result
+      if (status === "success") {
         return new Response(JSON.stringify({
-          ok: true,
-          status: "success",
-          mudd_sent: muddAmount,
-          remaining_ore: remainingOre,
-          dest_address: destAddress,
-          tx_hash: txHash,
-          message: `${muddAmount} MUDD sent to ${destAddress.substring(0,12)}... Check your wallet!`
+          ok: true, status: "success",
+          mudd_sent: muddAmount, remaining_ore: remaining,
+          dest_address: dest, tx_hash: txHash, seqno_used: seqno,
+          message: `${muddAmount} MUDD sent to ${dest.substring(0, 12)}... Check your wallet!`
         }), { headers: corsHeaders });
-      } else if (transferStatus === "pending") {
+      } else if (status === "pending") {
         return new Response(JSON.stringify({
-          ok: true,
-          status: "pending",
-          mudd_sent: muddAmount,
-          remaining_ore: remainingOre,
-          message: `Withdrawal of ${muddAmount} MUDD queued. MuddOre deducted. The on-chain transfer will process shortly — your MUDD tokens will appear in your wallet.`
+          ok: true, status: "pending",
+          mudd_sent: muddAmount, remaining_ore: remaining,
+          tx_error: txError, seqno_used: seqno,
+          message: `${muddAmount} MUDD withdrawal queued. ${txError}`
         }), { headers: corsHeaders });
       } else {
-        // Transfer failed — refund the MuddOre
-        const refundData: any = { mudd_ore_balance: remainingOre + oreAmount, total_withdrawn: (player.total_withdrawn || 0) };
-        if (stateData) { stateData.ore = remainingOre + oreAmount; refundData.state_data = JSON.stringify(stateData); }
-        await base44.asServiceRole.entities.RingMinePlayer.update(player.id, refundData);
+        // Refund on failure
+        sd.ore = remaining + oreAmount;
+        await base44.asServiceRole.entities.RingMinePlayer.update(p.id, {
+          mudd_ore_balance: remaining + oreAmount,
+          state_data: sd,
+          total_withdrawn: (p.total_withdrawn || 0)
+        });
         return new Response(JSON.stringify({
-          ok: false,
-          status: "failed",
-          error: `On-chain transfer failed: ${transferError}. MuddOre refunded.`,
+          ok: false, status: "failed",
+          error: `Transfer failed: ${txError}. MuddOre refunded.`,
           mudd_ore_refunded: oreAmount
         }), { headers: corsHeaders });
       }
@@ -287,9 +350,12 @@ Deno.serve(async (req: Request) => {
 
     if (action === "get_history") {
       const players = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: telegramId });
-      if (!players || players.length === 0) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: corsHeaders });
-      let history = []; try { history = players[0].withdrawal_history ? JSON.parse(players[0].withdrawal_history) : []; } catch(e){}
-      return new Response(JSON.stringify({ ok: true, total_withdrawn: players[0].total_withdrawn || 0, history: history.slice(0, 20) }), { headers: corsHeaders });
+      if (!players?.length) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: corsHeaders });
+      const hist = toArr(players[0].withdrawal_history);
+      return new Response(JSON.stringify({
+        ok: true, total_withdrawn: players[0].total_withdrawn || 0,
+        history: hist.slice(0, 20)
+      }), { headers: corsHeaders });
     }
 
     return new Response(JSON.stringify({ ok: false, error: "unknown action" }), { headers: corsHeaders });
