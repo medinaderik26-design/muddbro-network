@@ -26,7 +26,7 @@ Deno.serve(async (req: Request) => {
             state_data: sd
           }}), { headers: { "Content-Type": "application/json" } });
         }
-        return new Response(JSON.stringify({ ok: false, player: null }), { headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ ok:false, player:null }), { headers: { "Content-Type": "application/json" } });
       }
       if (body.action === "save") {
         const st = body.state || {};
@@ -61,61 +61,97 @@ Deno.serve(async (req: Request) => {
         const ud: any = { mudd_ore_balance: newOre };
         if (sd) { sd.ore = newOre; ud.state_data = JSON.stringify(sd); }
         await base44.asServiceRole.entities.RingMinePlayer.update(p.id, ud);
-        return new Response(JSON.stringify({ ok: true, yield: yield_, base_yield: baseYield, glyph_bonus: Math.round((gm - 1) * 100) + "%", equip_bonus: Math.round(eb * 100) + "%", companion_bonus: Math.round(compBonus * 100) + "%", companion: p.companion || null, new_balance: newOre, glyph_state: gs }), { headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ ok: true, yield: yield_, base_yield: baseYield, glyph_bonus: Math.round((gm-1)*100)+"%", companion: p.companion || null, new_balance: newOre, glyph_state: gs }), { headers: { "Content-Type": "application/json" } });
       }
       if (body.action === "casino_flip") {
-        const bet = Math.floor(Number(body.bet) || 0); const choice = String(body.choice || "heads");
+        const bet = Math.floor(Number(body.bet) || 0), choice = String(body.choice || "heads");
         if (bet < 10) return new Response(JSON.stringify({ ok: false, error: "Min bet 10" }), { headers: { "Content-Type": "application/json" } });
         const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
-        if (!ps || ps.length === 0) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
+        if (!ps?.length) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
         const p = ps[0]; let ore = p.mudd_ore_balance || 0, sd: any = null;
-        if (p.state_data) { try { sd = typeof p.state_data === "string" ? JSON.parse(p.state_data) : p.state_data; ore = Math.max(ore, sd.ore || 0); } catch { } }
-        if (ore < bet) return new Response(JSON.stringify({ ok: false, error: "Need " + bet + " ore (have " + ore + ")" }), { headers: { "Content-Type": "application/json" } });
-        const result = Math.random() < 0.5 ? "heads" : "tails"; const won = result === choice;
-        const sableBoost = p.companion === "Sable" && won ? Math.floor(bet * 0.1) : 0;
-        const payout = won ? bet * 2 + sableBoost : 0; const newOre = ore - bet + payout;
+        if (p.state_data) { try { sd = typeof p.state_data === "string" ? JSON.parse(p.state_data) : p.state_data; ore = Math.max(ore, sd.ore || 0); } catch {} }
+        if (ore < bet) return new Response(JSON.stringify({ ok: false, error: "Need " + bet + " ore" }), { headers: { "Content-Type": "application/json" } });
+        const result = Math.random() < 0.5 ? "heads" : "tails", won = result === choice;
+        const sb = p.companion === "Sable" && won ? Math.floor(bet * 0.1) : 0;
+        const payout = won ? bet * 2 + sb : 0, newOre = ore - bet + payout;
         const ud: any = { mudd_ore_balance: newOre }; if (sd) { sd.ore = newOre; ud.state_data = JSON.stringify(sd); }
         await base44.asServiceRole.entities.RingMinePlayer.update(p.id, ud);
-        return new Response(JSON.stringify({ ok: true, won, result, bet, payout, sable_bonus: sableBoost, new_balance: newOre, delta: newOre - ore, message: won ? "🪙 " + result.toUpperCase() + "! Won " + payout + " ore!" : "🪙 " + result.toUpperCase() + ". Lost " + bet + " ore." }), { headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ ok: true, won, result, bet, payout, sable_bonus: sb, new_balance: newOre, message: won ? "🪙 " + result.toUpperCase() + "! +" + payout : "🪙 " + result.toUpperCase() + ". -" + bet }), { headers: { "Content-Type": "application/json" } });
       }
       if (body.action === "casino_slots") {
         const bet = Math.floor(Number(body.bet) || 0);
         if (bet < 20) return new Response(JSON.stringify({ ok: false, error: "Min bet 20" }), { headers: { "Content-Type": "application/json" } });
         const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
-        if (!ps || ps.length === 0) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
+        if (!ps?.length) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
         const p = ps[0]; let ore = p.mudd_ore_balance || 0, sd: any = null;
-        if (p.state_data) { try { sd = typeof p.state_data === "string" ? JSON.parse(p.state_data) : p.state_data; ore = Math.max(ore, sd.ore || 0); } catch { } }
-        if (ore < bet) return new Response(JSON.stringify({ ok: false, error: "Need " + bet + " ore (have " + ore + ")" }), { headers: { "Content-Type": "application/json" } });
-        const syms = ["💎","⛏️","🔥","🌀","👑","💀"];
-        const reels = [syms[Math.floor(Math.random()*6)], syms[Math.floor(Math.random()*6)], syms[Math.floor(Math.random()*6)]];
+        if (p.state_data) { try { sd = typeof p.state_data === "string" ? JSON.parse(p.state_data) : p.state_data; ore = Math.max(ore, sd.ore || 0); } catch {} }
+        if (ore < bet) return new Response(JSON.stringify({ ok: false, error: "Need " + bet + " ore" }), { headers: { "Content-Type": "application/json" } });
+        const S = ["💎","⛏️","🔥","🌀","👑","💀"];
+        const r = [S[Math.floor(Math.random()*6)],S[Math.floor(Math.random()*6)],S[Math.floor(Math.random()*6)]];
         let payout = 0, msg = "";
-        if (reels[0] === reels[1] && reels[1] === reels[2]) { const m: any = { "💎":10,"👑":8,"🔥":6,"🌀":5,"⛏️":4,"💀":3 }; payout = bet * (m[reels[0]] || 3); msg = "🎰 JACKPOT! Three " + reels[0] + "! Won " + payout + " ore!"; }
-        else if (reels[0] === reels[1] || reels[1] === reels[2] || reels[0] === reels[2]) { payout = Math.floor(bet * 1.5); msg = "🎰 Two of a kind! Won " + payout + " ore."; }
-        else { msg = "🎰 No match. Lost " + bet + " ore."; }
-        const sableSlotBoost = p.companion === "Sable" && payout > 0 ? Math.floor(payout * 0.1) : 0;
-        const finalPayout = payout + sableSlotBoost;
-        const newOre = ore - bet + finalPayout;
+        if (r[0]===r[1]&&r[1]===r[2]) { const m:any={"💎":10,"👑":8,"🔥":6,"🌀":5,"⛏️":4,"💀":3}; payout = bet*(m[r[0]]||3); msg = "🎰 JACKPOT! 3x "+r[0]+"! +"+payout; }
+        else if (r[0]===r[1]||r[1]===r[2]||r[0]===r[2]) { payout = Math.floor(bet*1.5); msg = "🎰 Pair! +"+payout; }
+        else { msg = "🎰 No match. -"+bet; }
+        const sb = p.companion === "Sable" && payout > 0 ? Math.floor(payout * 0.1) : 0;
+        const fp = payout + sb, newOre = ore - bet + fp;
         const ud: any = { mudd_ore_balance: newOre }; if (sd) { sd.ore = newOre; ud.state_data = JSON.stringify(sd); }
         await base44.asServiceRole.entities.RingMinePlayer.update(p.id, ud);
-        return new Response(JSON.stringify({ ok: true, symbols: reels, bet, payout: finalPayout, sable_bonus: sableSlotBoost, new_balance: newOre, message: msg }), { headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ ok: true, symbols: r, bet, payout: fp, sable_bonus: sb, new_balance: newOre, message: msg }), { headers: { "Content-Type": "application/json" } });
       }
       if (body.action === "casino_dice") {
         const bet = Math.floor(Number(body.bet) || 0); const target = Math.floor(Number(body.target) || 50);
         if (bet < 10) return new Response(JSON.stringify({ ok: false, error: "Min bet 10" }), { headers: { "Content-Type": "application/json" } });
-        if (target < 2 || target > 98) return new Response(JSON.stringify({ ok: false, error: "Target must be 2-98" }), { headers: { "Content-Type": "application/json" } });
+        if (target < 2 || target > 98) return new Response(JSON.stringify({ ok: false, error: "Target 2-98" }), { headers: { "Content-Type": "application/json" } });
         const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({ telegram_id: tid });
-        if (!ps || ps.length === 0) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
+        if (!ps?.length) return new Response(JSON.stringify({ ok: false, error: "not found" }), { headers: { "Content-Type": "application/json" } });
         const p = ps[0]; let ore = p.mudd_ore_balance || 0, sd: any = null;
-        if (p.state_data) { try { sd = typeof p.state_data === "string" ? JSON.parse(p.state_data) : p.state_data; ore = Math.max(ore, sd.ore || 0); } catch { } }
-        if (ore < bet) return new Response(JSON.stringify({ ok: false, error: "Need " + bet + " ore (have " + ore + ")" }), { headers: { "Content-Type": "application/json" } });
-        const roll = Math.floor(Math.random() * 100) + 1; const won = roll < target;
-        const multiplier = 99 / (target - 1); const payout = won ? Math.floor(bet * multiplier) : 0;
-        const sableBoost = p.companion === "Sable" && won ? Math.floor(payout * 0.1) : 0;
-        const finalPayout = payout + sableBoost;
-        const newOre = ore - bet + finalPayout;
+        if (p.state_data) { try { sd = typeof p.state_data === "string" ? JSON.parse(p.state_data) : p.state_data; ore = Math.max(ore, sd.ore || 0); } catch {} }
+        if (ore < bet) return new Response(JSON.stringify({ ok: false, error: "Need " + bet + " ore" }), { headers: { "Content-Type": "application/json" } });
+        const roll = Math.floor(Math.random() * 100) + 1, won = roll < target;
+        const mult = 99 / (target - 1), payout = won ? Math.floor(bet * mult) : 0;
+        const sb = p.companion === "Sable" && won ? Math.floor(payout * 0.1) : 0;
+        const fp = payout + sb, newOre = ore - bet + fp;
         const ud: any = { mudd_ore_balance: newOre }; if (sd) { sd.ore = newOre; ud.state_data = JSON.stringify(sd); }
         await base44.asServiceRole.entities.RingMinePlayer.update(p.id, ud);
-        return new Response(JSON.stringify({ ok: true, roll, target, won, multiplier: multiplier.toFixed(2), bet, payout: finalPayout, sable_bonus: sableBoost, new_balance: newOre, delta: newOre - ore, message: won ? "🎲 Rolled " + roll + " (under " + target + ")! Won " + finalPayout + " ore!" : "🎲 Rolled " + roll + " (needed under " + target + "). Lost " + bet + " ore." }), { headers: { "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ ok: true, roll, target, won, multiplier: mult.toFixed(2), bet, payout: fp, sable_bonus: sb, new_balance: newOre, message: won ? "🎲 " + roll + " < " + target + "! Won " + fp + " ore!" : "🎲 " + roll + " >= " + target + ". Lost " + bet + " ore." }), { headers: { "Content-Type": "application/json" } });
+      }
+      if (body.action === "casino_crash") {
+        const bet = Math.floor(Number(body.bet)||0), target = Number(body.target)||2;
+        if (bet < 20) return new Response(JSON.stringify({ok:false,error:"Min bet 20"}),{headers:{"Content-Type":"application/json"}});
+        if (target < 1.3 || target > 50) return new Response(JSON.stringify({ok:false,error:"Target 1.3x-50x"}),{headers:{"Content-Type":"application/json"}});
+        const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({telegram_id:tid});
+        if(!ps?.length) return new Response(JSON.stringify({ok:false,error:"not found"}),{headers:{"Content-Type":"application/json"}});
+        const p=ps[0]; let ore=p.mudd_ore_balance||0, sd:any=null;
+        if(p.state_data){try{sd=typeof p.state_data==="string"?JSON.parse(p.state_data):p.state_data;ore=Math.max(ore,sd.ore||0);}catch{}}
+        if(ore<bet) return new Response(JSON.stringify({ok:false,error:"Need "+bet+" ore"}),{headers:{"Content-Type":"application/json"}});
+        const crash=Math.min(50,Math.max(1,0.97/(1-Math.random())));
+        const won=crash>=target, payout=won?Math.floor(bet*target):0;
+        const sb=p.companion==="Sable"&&won?Math.floor((payout-bet)*0.1):0;
+        const fp=payout+sb, newOre=ore-bet+fp;
+        const ud:any={mudd_ore_balance:newOre}; if(sd){sd.ore=newOre;ud.state_data=JSON.stringify(sd);}
+        await base44.asServiceRole.entities.RingMinePlayer.update(p.id,ud);
+        return new Response(JSON.stringify({ok:true,crash:crash.toFixed(2),target,won,bet,payout:fp,sable_bonus:sb,new_balance:newOre,message:won?"💎 "+crash.toFixed(2)+"x! Cashed at "+target+"x. +"+fp:"💥 "+crash.toFixed(2)+"x < "+target+"x. -"+bet}),{headers:{"Content-Type":"application/json"}});
+      }
+      if (body.action === "casino_hunt") {
+        const bet = Math.floor(Number(body.bet)||0), picks = Math.floor(Number(body.picks)||1);
+        if (bet < 20) return new Response(JSON.stringify({ok:false,error:"Min bet 20"}),{headers:{"Content-Type":"application/json"}});
+        if (picks < 1 || picks > 4) return new Response(JSON.stringify({ok:false,error:"Pick 1-4"}),{headers:{"Content-Type":"application/json"}});
+        const ps = await base44.asServiceRole.entities.RingMinePlayer.filter({telegram_id:tid});
+        if(!ps?.length) return new Response(JSON.stringify({ok:false,error:"not found"}),{headers:{"Content-Type":"application/json"}});
+        const p=ps[0]; let ore=p.mudd_ore_balance||0, sd:any=null;
+        if(p.state_data){try{sd=typeof p.state_data==="string"?JSON.parse(p.state_data):p.state_data;ore=Math.max(ore,sd.ore||0);}catch{}}
+        if(ore<bet) return new Response(JSON.stringify({ok:false,error:"Need "+bet+" ore"}),{headers:{"Content-Type":"application/json"}});
+        const trap=Math.floor(Math.random()*5);
+        const chosen:number[]=[]; while(chosen.length<picks){const t=Math.floor(Math.random()*5); if(!chosen.includes(t))chosen.push(t);}
+        const hit=chosen.includes(trap);
+        const probs:Record<number,number>={1:0.8,2:0.6,3:0.4,4:0.2};
+        const mult=Math.floor((1/(probs[picks]||0.8))*0.95*100)/100;
+        const payout=hit?0:Math.floor(bet*mult);
+        const sb=p.companion==="Sable"&&!hit?Math.floor((payout-bet)*0.1):0;
+        const fp=payout+sb, newOre=ore-bet+fp;
+        const ud:any={mudd_ore_balance:newOre}; if(sd){sd.ore=newOre;ud.state_data=JSON.stringify(sd);}
+        await base44.asServiceRole.entities.RingMinePlayer.update(p.id,ud);
+        return new Response(JSON.stringify({ok:true,results:chosen.map((t:number)=>({tile:t,safe:t!==trap})),hit_trap:hit,trap_tile:trap,multiplier:mult,bet,payout:fp,sable_bonus:sb,new_balance:newOre,message:hit?"💀 Trap at chest "+(trap+1)+"! -"+bet:"💎 "+picks+" safe at "+mult+"x! +"+fp}),{headers:{"Content-Type":"application/json"}});
       }
       if (body.action === "load_gear") { const g = await base44.asServiceRole.entities.MudForgeGear.filter({ owner_telegram_id: tid }); return new Response(JSON.stringify({ ok: true, gear: g || [] }), { headers: { "Content-Type": "application/json" } }); }
       if (body.action === "equip_gear") { await base44.asServiceRole.entities.MudForgeGear.update(body.gear_id, { equipped: body.equipped }); return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } }); }
@@ -142,7 +178,7 @@ Deno.serve(async (req: Request) => {
       // Forward market/wallet/leaderboard to ringMineMarket
       const forwardActions = ["list_gear", "buy_market", "cancel_listing", "link_wallet", "get_wallet", "withdraw", "get_history", "leaderboard", "passport_load", "passport_save", "convert_ore", "sync_companion", "get_images"];
       if (forwardActions.includes(body.action)) {
-        const mUrl = "https://superagent-ec909dfa.base44.app/functions/ringMineMarket";
+        const mUrl=new URL(req.url).origin+"/functions/ringMineMarket";
         const mRes = await fetch(mUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
         const mData = await mRes.json();
         return new Response(JSON.stringify(mData), { headers: { "Content-Type": "application/json" } });

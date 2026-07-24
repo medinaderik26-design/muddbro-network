@@ -1,4 +1,5 @@
 {
+  "name": "RingMinePlayer",
   "properties": {
     "companion": {
       "type": "string"
@@ -110,7 +111,7 @@
       "type": "string"
     },
     "state_data": {
-      "type": "object"
+      "type": "string"
     },
     "streak_days": {
       "type": "number"
@@ -160,7 +161,6 @@
       "type": "array"
     }
   },
-  "type": "object",
   "required": [],
-  "name": "RingMinePlayer"
+  "type": "object"
 }
