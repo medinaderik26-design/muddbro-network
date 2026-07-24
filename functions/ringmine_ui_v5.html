@@ -138,7 +138,7 @@ input[type=range]{accent-color:#a0f0ff}
 <button class="tab" data-t="stats"><span class="ti">📊</span>Stats</button>
 </div>
 <script>
-const API=window.__RINGMINE_API_URL__||"https://superagent-ec909dfa.base44.app/functions/ringMineApp";
+const API="https://superagent-ec909dfa.base44.app/functions/ringMineApp";
 let P=null,GL=null,GE=[],LB=[],WH=[];
 const TID=window.Telegram?.WebApp?.initDataUnsafe?.user?.id||"test123";
 async function api(a,d={}){try{const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:a,telegram_id:String(TID),...d})});return await r.json();}catch(e){return{ok:false,error:String(e)};}}

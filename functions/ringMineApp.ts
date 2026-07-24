@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-const HTML_URL = "https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/f36e2e863_ringmine_ui_v5.html";
+const HTML_URL = "https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/a9e66496c_ringmine_ui_v5.html";
 Deno.serve(async (req: Request) => {
   if (req.method === "POST") {
     try {
@@ -190,13 +190,11 @@ Deno.serve(async (req: Request) => {
     }
   }
   // Serve HTML
-  const selfUrl = new URL(req.url).origin + new URL(req.url).pathname;
   if (HTML_URL) {
     try {
       const resp = await fetch(HTML_URL, { cache: "no-store" });
       if (resp.ok) {
         let html = await resp.text();
-        html = html.replace("window.__RINGMINE_API_URL__", JSON.stringify(selfUrl));
         return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache, no-store, must-revalidate" } });
       }
     } catch (e) { console.error("HTML fetch error:", e); }
