@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Ring Mine</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#a0f0ff;font-family:'Courier New',monospace;max-width:500px;margin:0 auto;padding-bottom:80px;-webkit-tap-highlight-color:transparent}
+::-webkit-scrollbar{width:0}
+.card{background:#11121a;border:1px solid #1a3a5c;border-radius:8px;padding:12px;margin:8px}
+.btn{background:#1a3a5c;border:1px solid #2a5a8c;color:#a0f0ff;padding:10px 16px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:14px;width:100%;margin:4px 0;transition:all .15s}
+.btn:active{background:#2a5a8c;transform:scale(0.98)}
+.btn-gold{background:#2a2a10;border-color:#ffd700;color:#ffd700}
+.btn-gold:active{background:#3a3a20}
+.btn-cyan{background:#0a2a3a;border-color:#a0f0ff;color:#a0f0ff}
+.btn-red{background:#3a0a0a;border-color:#ff4444;color:#ff4444}
+.btn:disabled{opacity:0.4;cursor:default}
+.tabs{display:flex;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:500px;background:#0a0a0f;border-top:1px solid #1a3a5c;z-index:100}
+.tab{flex:1;text-align:center;padding:10px 2px;color:#556;font-size:10px;cursor:pointer;border:none;background:none;font-family:inherit}
+.tab.active{color:#a0f0ff}
+.tab.active .ti{color:#a0f0ff;text-shadow:0 0 8px #a0f0ff66}
+.ti{font-size:20px;display:block;margin-bottom:2px;color:#556}
+.stat-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1a2a3c}
+.stat-label{color:#6789ab}
+.stat-val{color:#a0f0ff;font-weight:bold}
+.glow{text-shadow:0 0 10px currentColor}
+.gold{color:#ffd700}.cyan{color:#a0f0ff}.red{color:#ff6666}.green{color:#66ff66}.muted{color:#556677}
+.companion-img{width:80px;height:80px;border-radius:50%;border:2px solid #a0f0ff;margin:0 auto 8px;display:block}
+.tap-btn{width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,#1a3a5c,#0a0a1a);border:2px solid #a0f0ff;color:#a0f0ff;font-size:16px;font-family:inherit;cursor:pointer;margin:16px auto;display:block;box-shadow:0 0 20px #a0f0ff33;transition:transform .1s}
+.tap-btn:active{transform:scale(0.95);box-shadow:0 0 30px #a0f0ff66}
+.float{position:fixed;pointer-events:none;font-weight:bold;animation:floatUp 1s ease-out forwards;z-index:200}
+@keyframes floatUp{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-60px)}}
+.mining-bar{height:4px;background:#1a2a3c;border-radius:2px;margin:8px 0;overflow:hidden}
+.mining-fill{height:100%;background:linear-gradient(90deg,#a0f0ff,#ffd700);border-radius:2px;transition:width .3s}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px}
+.badge-seed{background:#1a2a1a;color:#88aa88}.badge-glyph{background:#1a2a3a;color:#a0c0ff}.badge-resonant{background:#2a1a3a;color:#c0a0ff}.badge-hyper{background:#3a2a1a;color:#ffd700}.badge-monument{background:#3a1a1a;color:#ff8844}
+.lb-row{display:flex;align-items:center;padding:6px 8px;border-bottom:1px solid #1a2a3c}
+.lb-rank{width:28px;text-align:center;font-weight:bold;color:#ffd700}
+.lb-info{flex:1;padding-left:8px}
+.lb-xp{color:#6789ab;font-size:12px}
+.hidden{display:none}
+h2{font-size:16px;margin-bottom:8px;color:#a0f0ff}
+h3{font-size:14px;margin:8px 0;color:#ffd700}
+input,select{background:#11121a;color:#a0f0ff;border:1px solid #1a3a5c;padding:10px;border-radius:6px;width:100%;margin:4px 0;font-family:inherit;font-size:14px}
+input[type=range]{accent-color:#a0f0ff}
+.hist-row{padding:6px 0;border-bottom:1px solid #1a2a3c;font-size:12px}
+.hist-date{color:#556677;font-size:10px}
+.hist-status{text-align:right;font-weight:bold}
+
+/* Casino game styling */
+.game-card{background:#11121a;border:1px solid #1a3a5c;border-radius:10px;padding:14px;margin:8px;position:relative;overflow:hidden}
+.game-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#a0f0ff,transparent);opacity:0.4}
+.game-title{font-size:13px;color:#ffd700;font-weight:bold;margin-bottom:6px;letter-spacing:1px}
+.game-desc{font-size:11px;color:#556677;margin-bottom:10px}
+.bet-bar{display:flex;gap:4px;margin:8px 0}
+.bet-chip{flex:1;background:#0a1a2a;border:1px solid #1a3a5c;color:#a0f0ff;padding:6px 4px;border-radius:4px;text-align:center;font-size:11px;cursor:pointer;transition:all .15s}
+.bet-chip.active{background:#0a2a4a;border-color:#a0f0ff;color:#a0f0ff;box-shadow:0 0 8px #a0f0ff33}
+.bet-chip:active{transform:scale(0.95)}
+.result-box{min-height:40px;padding:8px;text-align:center;border-radius:6px;margin:8px 0;transition:all .3s}
+.result-win{background:#0a2a0a;border:1px solid #22aa22}
+.result-loss{background:#2a0a0a;border:1px solid #aa2222}
+.result-pending{background:#1a1a0a;border:1px solid #ffd700}
+
+/* Coin flip */
+.coin-3d{width:80px;height:80px;margin:8px auto;perspective:200px}
+.coin-inner{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform 0.8s ease-out}
+.coin-face{position:absolute;width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;backface-visibility:hidden}
+.coin-heads{background:radial-gradient(circle,#ffd700,#b8860b);color:#1a1a00;box-shadow:0 0 20px #ffd70044}
+.coin-tails{background:radial-gradient(circle,#a0f0ff,#0a4a6a);color:#001a2a;transform:rotateY(180deg);box-shadow:0 0 20px #a0f0ff44}
+.coin-flipping{animation:coinSpin 0.8s linear}
+@keyframes coinSpin{0%{transform:rotateY(0)}100%{transform:rotateY(1440deg)}}
+
+/* Slots */
+.slots-frame{background:#0a0a1a;border:2px solid #1a3a5c;border-radius:8px;padding:12px;margin:8px 0}
+.slots-reel{display:inline-block;width:60px;height:60px;text-align:center;line-height:60px;font-size:32px;background:#11121a;border:1px solid #2a4a6c;border-radius:6px;margin:0 4px;vertical-align:middle}
+.slots-spin{animation:slotRoll 0.5s linear}
+@keyframes slotRoll{0%{transform:translateY(-40px);opacity:0.3}50%{transform:translateY(0);opacity:1}100%{transform:translateY(0);opacity:1}}
+.jackpot-glow{animation:jackpot 0.6s ease-in-out infinite alternate}
+@keyframes jackpot{from{box-shadow:0 0 10px #ffd70044}to{box-shadow:0 0 30px #ffd700aa,0 0 50px #ffd70066}}
+
+/* Dice */
+.dice-display{display:inline-block;width:50px;height:50px;text-align:center;line-height:50px;font-size:28px;background:#11121a;border:1px solid #2a4a6c;border-radius:8px;margin:4px}
+.dice-roll{animation:diceShake 0.5s ease}
+@keyframes diceShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px) rotate(-5deg)}75%{transform:translateX(4px) rotate(5deg)}}
+.dice-bar-wrap{height:6px;background:#1a2a3c;border-radius:3px;margin:10px 0;position:relative;overflow:hidden}
+.dice-bar-fill{height:100%;background:linear-gradient(90deg,#66ff66,#a0f0ff,#ffd700);border-radius:3px;transition:width .5s}
+.dice-marker{position:absolute;top:-2px;width:2px;height:10px;background:#ffd700}
+.dice-low{color:#66ff66}.dice-high{color:#ffd700}
+
+/* Crash */
+.crash-display{text-align:center;padding:12px;margin:8px 0;background:#0a0a1a;border:1px solid #1a3a5c;border-radius:8px}
+.crash-multi{font-size:40px;font-weight:bold;transition:all .3s}
+.crash-arrow{font-size:24px;margin:4px 0}
+.crash-targets{display:flex;gap:4px;margin:8px 0;flex-wrap:wrap;justify-content:center}
+.crash-btn{background:#0a2a3a;border:1px solid #2a5a7c;color:#a0f0ff;padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit;transition:all .15s}
+.crash-btn:active{transform:scale(0.93)}
+.crash-btn:disabled{opacity:0.4}
+.crash-rising{animation:crashRise 0.8s ease}
+@keyframes crashRise{from{opacity:0;transform:scale(0.5)}to{opacity:1;transform:scale(1)}}
+.crash-line{height:50px;position:relative;margin:8px 0;overflow:hidden;border-radius:4px;background:#080810}
+.crash-curve{position:absolute;bottom:0;left:0;right:0;height:100%}
+
+/* Treasure Hunt */
+.hunt-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:10px 0}
+.hunt-chest{aspect-ratio:1;background:#0a1a2a;border:2px solid #1a3a5c;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px;cursor:default;transition:all .3s}
+.hunt-chest.opening{animation:chestOpen 0.4s ease}
+@keyframes chestOpen{0%{transform:scale(1)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
+.hunt-chest.safe{background:#0a2a0a;border-color:#22aa22}
+.hunt-chest.trap{background:#2a0a0a;border-color:#aa2222;animation:trapShake 0.3s ease}
+@keyframes trapShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.hunt-pick-btn{flex:1;background:#0a2a3a;border:1px solid #2a5a7c;color:#a0f0ff;padding:8px 4px;border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit;transition:all .15s}
+.hunt-pick-btn:active{transform:scale(0.93)}
+.hunt-pick-btn:disabled{opacity:0.4}
+
+/* Screen flash */
+.screen-flash{position:fixed;inset:0;pointer-events:none;z-index:300;animation:flash 0.4s ease-out forwards}
+@keyframes flash{0%{opacity:0.3}100%{opacity:0}}
+.flash-win{background:radial-gradient(circle,#22aa2233,transparent)}
+.flash-loss{background:radial-gradient(circle,#aa222233,transparent)}
+
+/* Ore display */
+.ore-display{background:#0a1a2a;border:1px solid #1a3a5c;border-radius:8px;padding:10px;margin:8px 0;display:flex;justify-content:space-between;align-items:center}
+.ore-icon{font-size:20px}
+.ore-amount{font-size:18px;font-weight:bold;color:#a0f0ff}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="tabs" id="tabs">
+<button class="tab active" data-t="mine"><span class="ti">⛏️</span>Mine</button>
+<button class="tab" data-t="glyph"><span class="ti">🔮</span>Glyph</button>
+<button class="tab active" data-t="casino"><span class="ti">🎲</span>Casino</button>
+<button class="tab" data-t="forge"><span class="ti">🔨</span>Forge</button>
+<button class="tab" data-t="wallet"><span class="ti">💰</span>Wallet</button>
+<button class="tab" data-t="stats"><span class="ti">📊</span>Stats</button>
+</div>
+<script>
+const API=window.__RINGMINE_API_URL__||"https://superagent-ec909dfa.base44.app/functions/ringMineApp";
+let P=null,GL=null,GE=[],LB=[],WH=[];
+const TID=window.Telegram?.WebApp?.initDataUnsafe?.user?.id||"test123";
+async function api(a,d={}){try{const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:a,telegram_id:String(TID),...d})});return await r.json();}catch(e){return{ok:false,error:String(e)};}}
+async function load(){const d=await api("load");if(d.ok&&d.player)P=d.player;}
+async function loadGlyph(){const d=await api("load_glyph");if(d.ok)GL=d;}
+async function loadGear(){const d=await api("load_gear");if(d.ok)GE=d.gear||[];}
+async function loadLB(){const d=await api("leaderboard");if(d.ok)LB=d.leaderboard||[];}
+async function loadHistory(){const d=await api("get_history");if(d.ok)WH=d.history||[];}
+function badge(s){const m={Seed:"badge-seed",Glyph:"badge-glyph",Resonant:"badge-resonant",Hyperstate:"badge-hyper",Monument:"badge-monument"};return `<span class="badge ${m[s]||"badge-seed"}">${s||"Seed"}</span>`;}
+function floatText(txt,e){const r=e.getBoundingClientRect();const f=document.createElement("div");f.className="float";f.textContent=txt;f.style.left=r.left+r.width/2+"px";f.style.top=r.top+"px";f.style.color=txt.includes("-")?"#ff6666":"#66ff66";document.body.appendChild(f);setTimeout(()=>f.remove(),1000);}
+function flashScreen(type){const f=document.createElement("div");f.className="screen-flash flash-"+type;document.body.appendChild(f);setTimeout(()=>f.remove(),400);}
+async function doMine(){const btn=document.getElementById("mineBtn");const r=await api("mine");if(r.ok){P.mudd_ore_balance=r.new_balance;floatText("+"+r.yield+" ore",btn);updateMine();}}
+function updateMine(){const el=document.getElementById("mineOre");if(el)el.textContent=P?.mudd_ore_balance||0;const ce=document.querySelectorAll(".ore-amount");ce.forEach(e=>e.textContent=P?.mudd_ore_balance||0);}
+function renderMine(){return `<div class="card"><h2>⛏️ Mining</h2><p class="muted">Tap to mine MuddOre from the deep earth</p><button class="tap-btn" id="mineBtn" onclick="doMine()">MINE</button><div class="stat-row"><span class="stat-label">MuddOre</span><span class="stat-val cyan" id="mineOre">${P?.mudd_ore_balance||0}</span></div><div class="stat-row"><span class="stat-label">Claimable MUDD</span><span class="stat-val gold">${Math.floor((P?.mudd_ore_balance||0)/1000)}</span></div>${GL?`<div class="stat-row"><span class="stat-label">Glyph State</span><span>${badge(GL.glyph_state)}</span></div><div class="stat-row"><span class="stat-label">Glyph Bonus</span><span class="stat-val green">${GL.glyph_state==="Seed"?"0%":GL.glyph_state==="Glyph"?"2%":GL.glyph_state==="Resonant"?"5%":GL.glyph_state==="Hyperstate"?"10%":"20%"}</span></div>`:""}${P?.companion?`<div class="stat-row"><span class="stat-label">Companion</span><span class="stat-val">${P.companion}</span></div>`:""}</div>`;}
+function renderGlyph(){if(!GL)return `<div class="card"><h2>🔮 Glyphin</h2><p class="muted">Journal in the bot to begin glyph progression.</p></div>`;const seeds=GL.glyph_seeds||[];const lineage=GL.glyph_lineage||[];const anchors=GL.resonance_anchors||[];return `<div class="card"><h2>🔮 Glyphin State</h2><div style="text-align:center;padding:12px"><div style="font-size:28px;margin:8px">${badge(GL.glyph_state)}</div><div class="muted">Cohesion: ${GL.glyph_cohesion||0}</div></div><div class="stat-row"><span class="stat-label">Queen</span><span class="stat-val">${GL.queen_name||"The Queen"}</span></div><div class="stat-row"><span class="stat-label">Bond</span><span class="stat-val gold">${GL.queen_bond||0}</span></div><div class="stat-row"><span class="stat-label">Streak</span><span class="stat-val">${GL.streak_days||0} days</span></div>${seeds.length?`<h3>Seeds (${seeds.length})</h3>${seeds.slice(-5).map(s=>`<div class="card" style="margin:4px 0;padding:8px"><div class="muted" style="font-size:11px">${s.mood||"neutral"}</div><div style="font-size:13px">${(s.entry||"").slice(0,80)}...</div></div>`).join("")}`:""}${anchors.length?`<h3>Resonance Anchors</h3>${anchors.slice(0,8).map(a=>`<div class="stat-row"><span class="stat-label">${a.keyword}</span><span class="stat-val">×${a.count}</span></div>`).join("")}`:""}${lineage.length?`<h3>Lineage</h3>${lineage.map(l=>`<div class="muted" style="font-size:12px">${l.from_state} → ${l.to_state}: ${l.reason}</div>`).join("")}`:""}</div>`;}
+
+function renderCasino(){const ore=P?.mudd_ore_balance||0;const comp=P?.companion||"";const sable=comp==="Sable";
+return `<div class="ore-display"><div><span class="ore-icon">⛏️</span> <span class="muted" style="font-size:12px">MuddOre Balance</span></div><span class="ore-amount">${ore}</span></div>
+${sable?`<div class="card" style="text-align:center;padding:6px 12px;margin:4px 8px"><span style="font-size:11px;color:#ffd700">🐺 Sable active: +10% casino winnings</span></div>`:""}
+
+<div class="game-card"><div class="game-title">🪙 COIN FLIP</div><div class="game-desc">Heads or tails — double or nothing</div>
+<div class="coin-3d" id="coinFlip3d"><div class="coin-inner" id="coinInner"><div class="coin-face coin-heads">👑</div><div class="coin-face coin-tails">🔮</div></div></div>
+<div class="bet-bar" id="flipChips">${[10,50,100,500].map(v=>`<div class="bet-chip${v===50?" active":""}" data-val="${v}" data-game="flip" onclick="setBet(this)">${v}</div>`).join("")}</div>
+<div class="grid2"><button class="btn btn-cyan" id="flipHeads" onclick="doFlip('heads')">👑 HEADS</button><button class="btn btn-cyan" id="flipTails" onclick="doFlip('tails')">🔮 TAILS</button></div>
+<div class="result-box" id="flipResult"></div></div>
+
+<div class="game-card"><div class="game-title">🎰 CRYSTAL SLOTS</div><div class="game-desc">Match 3 symbols — up to 10× jackpot</div>
+<div class="slots-frame" style="text-align:center"><span class="slots-reel" id="slot1">❓</span><span class="slots-reel" id="slot2">❓</span><span class="slots-reel" id="slot3">❓</span></div>
+<div class="bet-bar" id="slotsChips">${[20,50,100,500].map(v=>`<div class="bet-chip${v===50?" active":""}" data-val="${v}" data-game="slots" onclick="setBet(this)">${v}</div>`).join("")}</div>
+<button class="btn btn-gold" id="slotsSpin" onclick="doSlots()">SPIN</button>
+<div class="result-box" id="slotsResult"></div></div>
+
+<div class="game-card"><div class="game-title">🎲 DICE ROLL</div><div class="game-desc">Roll under target — lower target, higher payout</div>
+<input id="diceTarget" type="range" min="2" max="98" value="50" oninput="updateDiceUI(this.value)">
+<div style="text-align:center;margin:6px 0"><span class="dice-low" style="font-size:12px">WIN: roll < 2</span><div style="font-size:22px;color:#a0f0ff;margin:4px">Roll under <span id="diceVal">50</span></div><span class="dice-high" style="font-size:16px;font-weight:bold" id="diceMult">2.0× payout</span></div>
+<div class="dice-bar-wrap"><div class="dice-bar-fill" id="diceBar" style="width:50%"></div><div class="dice-marker" id="diceMark" style="left:calc(50% - 1px)"></div></div>
+<div class="bet-bar" id="diceChips">${[10,50,100,500].map(v=>`<div class="bet-chip${v===50?" active":""}" data-val="${v}" data-game="dice" onclick="setBet(this)">${v}</div>`).join("")}</div>
+<button class="btn btn-cyan" id="diceRoll" onclick="doDice()">ROLL</button>
+<div class="result-box" id="diceResult"></div></div>
+
+<div class="game-card"><div class="game-title">💎 CRYSTAL CRASH</div><div class="game-desc">Cash out before the crystal shatters</div>
+<div class="crash-display"><div class="crash-multi" id="crashMulti" style="color:#556677">—.—×</div><div class="crash-arrow" id="crashArrow">Select a target</div></div>
+<div class="crash-targets">
+<button class="crash-btn" onclick="doCrash(1.5)">1.5×</button>
+<button class="crash-btn" onclick="doCrash(2)">2.0×</button>
+<button class="crash-btn" onclick="doCrash(3)">3.0×</button>
+<button class="crash-btn" onclick="doCrash(5)">5.0×</button>
+<button class="crash-btn" onclick="doCrash(10)">10×</button>
+</div>
+<div class="bet-bar" id="crashChips">${[20,50,100,500].map(v=>`<div class="bet-chip${v===50?" active":""}" data-val="${v}" data-game="crash" onclick="setBet(this)">${v}</div>`).join("")}</div>
+<div class="result-box" id="crashResult"></div></div>
+
+<div class="game-card"><div class="game-title">🎁 TREASURE HUNT</div><div class="game-desc">Open chests — avoid the trap. More picks, more risk, more reward.</div>
+<div class="hunt-grid" id="huntGrid">${[0,1,2,3,4].map(i=>`<div class="hunt-chest" id="hunt${i}">🎁</div>`).join("")}</div>
+<div style="display:flex;gap:4px;margin:8px 0">
+<button class="hunt-pick-btn" onclick="doHunt(1)">1 PICK<br><span style="color:#ffd700;font-size:10px">1.19×</button>
+<button class="hunt-pick-btn" onclick="doHunt(2)">2 PICKS<br><span style="color:#ffd700;font-size:10px">1.58×</button>
+<button class="hunt-pick-btn" onclick="doHunt(3)">3 PICKS<br><span style="color:#ffd700;font-size:10px">2.37×</button>
+<button class="hunt-pick-btn" onclick="doHunt(4)">4 PICKS<br><span style="color:#ffd700;font-size:10px">4.75×</button>
+</div>
+<div class="bet-bar" id="huntChips">${[20,50,100,500].map(v=>`<div class="bet-chip${v===50?" active":""}" data-val="${v}" data-game="hunt" onclick="setBet(this)">${v}</div>`).join("")}</div>
+<div class="result-box" id="huntResult"></div></div>`;}
+
+function setBet(el){const game=el.dataset.game,val=el.dataset.val;document.querySelectorAll(`[data-game="${game}"]`).forEach(c=>c.classList.remove("active"));el.classList.add("active");}
+function getBet(game){const a=document.querySelector(`[data-game="${game}"].active`);return a?parseInt(a.dataset.val):50;}
+function updateDiceUI(v){document.getElementById("diceVal").textContent=v;document.getElementById("diceMult").textContent=(99/(v-1)).toFixed(1)+"× payout";document.getElementById("diceBar").style.width=v+"%";document.getElementById("diceMark").style.left=`calc(${v}% - 1px)`;}
+
+async function doFlip(side){const bet=getBet("flip");const headsBtn=document.getElementById("flipHeads"),tailsBtn=document.getElementById("flipTails");headsBtn.disabled=true;tailsBtn.disabled=true;const coin=document.getElementById("coinInner"),el=document.getElementById("flipResult");
+el.className="result-box result-pending";el.innerHTML='<span class="muted">Flipping...</span>';
+coin.classList.add("coin-flipping");
+const r=await api("casino_flip",{choice:side,bet});setTimeout(()=>{
+coin.classList.remove("coin-flipping");
+coin.style.transform=r.result==="heads"?"rotateY(0deg)":"rotateY(180deg)";
+headsBtn.disabled=false;tailsBtn.disabled=false;
+if(r.ok){P.mudd_ore_balance=r.new_balance;updateMine();flashScreen(r.won?"win":"loss");floatText((r.wown?"":"-")+bet,headsBtn);
+el.className="result-box "+(r.won?"result-win":"result-loss");
+el.innerHTML=`<div style="font-size:18px;font-weight:bold" class="${r.won?"green":"red"}">${r.won?"🎉 WIN":"💔 LOSS"}</div><div class="muted" style="font-size:12px">${r.message}</div>${r.sable_bonus?`<div class="gold" style="font-size:11px">🐺 Sable +${r.sable_bonus}</div>`:""}`;}
+else{el.className="result-box result-loss";el.innerHTML=`<div class="red" style="font-size:12px">${r.error}</div>`;}
+},800);}
+
+async function doSlots(){const bet=getBet("slots");const spinBtn=document.getElementById("slotsSpin"),el=document.getElementById("slotsResult");
+spinBtn.disabled=true;spinBtn.textContent="SPINNING...";el.className="result-box result-pending";el.innerHTML='<span class="muted"> Rolling...</span>';
+const reels=["slot1","slot2","slot3"];const syms=["💎","⛏️","🔥","🌀","👑","💀"];
+let interval=setInterval(()=>{reels.forEach(id=>{document.getElementById(id).textContent=syms[Math.floor(Math.random()*6)];});},80);
+const r=await api("casino_slots",{bet});
+setTimeout(()=>{clearInterval(interval);spinBtn.disabled=false;spinBtn.textContent="SPIN";
+if(r.ok){P.mudd_ore_balance=r.new_balance;updateMine();r.symbols.forEach((s,i)=>{setTimeout(()=>{const reel=document.getElementById(reels[i]);reel.textContent=s;reel.classList.add("slots-spin");setTimeout(()=>reel.classList.remove("slots-spin"),500);},i*200);});
+setTimeout(()=>{flashScreen(r.payout>0?"win":"loss");if(r.payout>0)floatText("+"+r.payout,spinBtn);
+el.className="result-box "+(r.payout>0?"result-win":"result-loss");
+el.innerHTML=`<div style="font-size:16px;font-weight:bold" class="${r.payout>0?"green":"red"}">${r.message}</div>${r.sable_bonus?`<div class="gold" style="font-size:11px">🐺 Sable +${r.sable_bonus}</div>`:""}`;
+if(r.payout>bet*3){document.querySelectorAll(".slots-reel").forEach(r=>r.classList.add("jackpot-glow"));setTimeout(()=>document.querySelectorAll(".slots-reel").forEach(r=>r.classList.remove("jackpot-glow")),2000);}},700);}
+else{el.className="result-box result-loss";el.innerHTML=`<div class="red" style="font-size:12px">${r.error}</div>`;}
+},600);}
+
+async function doDice(){const target=parseInt(document.getElementById("diceTarget").value);const bet=getBet("dice");const rollBtn=document.getElementById("diceRoll"),el=document.getElementById("diceResult");
+rollBtn.disabled=true;rollBtn.textContent="ROLLING...";el.className="result-box result-pending";el.innerHTML='<span class="muted">Rolling...</span>';
+const r=await api("casino_dice",{target,bet});
+setTimeout(()=>{rollBtn.disabled=false;rollBtn.textContent="ROLL";
+if(r.ok){P.mudd_ore_balance=r.new_balance;updateMine();flashScreen(r.won?"win":"loss");floatText(r.won?"+"+r.payout:"-"+bet,rollBtn);
+el.className="result-box "+(r.won?"result-win":"result-loss");
+el.innerHTML=`<div style="font-size:20px;font-weight:bold" class="${r.won?"green":"red"}">🎲 ${r.roll}</div><div class="muted" style="font-size:11px">${r.won?"Rolled under "+target+"!":"Rolled over "+target}</div><div class="${r.won?"green":"red"}" style="font-size:12px;margin-top:4px">${r.message}</div>${r.sable_bonus?`<div class="gold" style="font-size:11px">🐺 Sable +${r.sable_bonus}</div>`:""}`;}
+else{el.className="result-box result-loss";el.innerHTML=`<div class="red" style="font-size:12px">${r.error}</div>`;}
+},500);}
+
+async function doCrash(target){const bet=getBet("crash");const btns=document.querySelectorAll(".crash-btn");const multiEl=document.getElementById("crashMulti"),arrowEl=document.getElementById("crashArrow"),el=document.getElementById("crashResult");
+btns.forEach(b=>b.disabled=true);
+multiEl.textContent="—.—";multiEl.style.color="#ffd700";arrowEl.textContent="💎 Rising...";arrowEl.style.color="#ffd700";
+el.className="result-box result-pending";el.innerHTML='<span class="muted">Crash point calculating...</span>';
+const r=await api("casino_crash",{bet,target});
+let displayVal=1.00;const crashVal=parseFloat(r.crash||"0");const duration=800;const steps=20;const stepVal=(crashVal-1)/steps;
+let step=0;const ticker=setInterval(()=>{step++;displayVal+=stepVal;if(step>=steps){clearInterval(ticker);
+multiEl.textContent=crashVal.toFixed(2)+"×";multiEl.style.color=r.won?"#66ff66":"#ff6666";
+arrowEl.innerHTML=r.won?"💎 CASHED OUT!":"💥 CRASHED!";arrowEl.style.color=r.won?"#66ff66":"#ff6666";
+btns.forEach(b=>b.disabled=false);
+if(r.ok){P.mudd_ore_balance=r.new_balance;updateMine();flashScreen(r.won?"win":"loss");floatText(r.won?"+"+r.payout:"-"+bet,multiEl);
+el.className="result-box "+(r.won?"result-win":"result-loss");
+el.innerHTML=`<div style="font-size:16px;font-weight:bold" class="${r.won?"green":"red"}">${r.message}</div>${r.sable_bonus?`<div class="gold" style="font-size:11px">🐺 Sable +${r.sable_bonus}</div>`:""}`;}
+else{el.className="result-box result-loss";el.innerHTML=`<div class="red" style="font-size:12px">${r.error}</div>`;}
+}else{multiEl.textContent=displayVal.toFixed(2)+"×";}},duration/steps);}
+
+async function doHunt(picks){const bet=getBet("hunt");const pickBtns=document.querySelectorAll(".hunt-pick-btn");pickBtns.forEach(b=>b.disabled=true);
+const el=document.getElementById("huntResult");el.className="result-box result-pending";el.innerHTML='<span class="muted">Opening chests...</span>';
+[0,1,2,3,4].forEach(i=>{const c=document.getElementById("hunt"+i);c.textContent="🎁";c.className="hunt-chest";});
+const r=await api("casino_hunt",{bet,picks});
+if(r.ok){P.mudd_ore_balance=r.new_balance;updateMine();let delay=0;
+(r.results||[]).forEach(res=>{setTimeout(()=>{const c=document.getElementById("hunt"+res.tile);c.classList.add("opening");setTimeout(()=>{c.classList.remove("opening");c.classList.add(res.safe?"safe":"trap");c.textContent=res.safe?"💎":"💀";},200);},delay);delay+=300;});
+setTimeout(()=>{flashScreen(r.hit_trap?"loss":"win");floatText(r.hit_trap?"-"+bet:"+"+r.payout,el);
+el.className="result-box "+(r.hit_trap?"result-loss":"result-win");
+el.innerHTML=`<div style="font-size:16px;font-weight:bold" class="${r.hit_trap?"red":"green"}">${r.message}</div>${!r.hit_trap&&r.sable_bonus?`<div class="gold" style="font-size:11px">🐺 Sable +${r.sable_bonus}</div>`:""}`;
+pickBtns.forEach(b=>b.disabled=false);
+setTimeout(()=>{[0,1,2,3,4].forEach(i=>{const c=document.getElementById("hunt"+i);if(!c.classList.contains("safe")&&!c.classList.contains("trap")){if(i===r.trap_tile){c.classList.add("trap");c.textContent="💀";}else{c.textContent="🎁";}}});},500);
+},delay+200);
+}else{el.className="result-box result-loss";el.innerHTML=`<div class="red" style="font-size:12px">${r.error}</div>`;pickBtns.forEach(b=>b.disabled=false);}}
+
+function renderForge(){let gh=`<div class="card"><h2>⚒️ MudForge</h2><p class="muted">Burn 200 MUDD to forge gear. 30% permanently burned.</p><div class="stat-row"><span class="stat-label">Your MUDD</span><span class="stat-val gold">${P?.mudd_balance||0}</span></div><button class="btn btn-gold" onclick="doForge()">⚒️ Forge Helm (200 MUDD)</button><div id="forgeResult"></div></div>`;if(GE.length){gh+=`<div class="card"><h3>My Gear (${GE.length})</h3>${GE.map(g=>`<div class="stat-row"><span class="stat-label">${g.name}${g.equipped?" ✅":""}</span><span class="stat-val" style="font-size:11px">${g.rarity} · +${g.mining_bonus}% mine</span>${!g.equipped?`<button class="btn" style="width:auto;padding:4px 8px;margin:0;font-size:11px" onclick="equipGear('${g.id}')">Equip</button>`:`<button class="btn btn-red" style="width:auto;padding:4px 8px;margin:0;font-size:11px" onclick="equipGear('${g.id}',false)">Unequip</button>`}</div>`).join("")}</div>`;}gh+=`<div class="card"><button class="btn btn-cyan" onclick="showMarket()">📦 Browse Market</button><div id="marketResult"></div></div>`;return gh;}
+async function doForge(){const r=await api("forge",{tribe:"None"});const el=document.getElementById("forgeResult");if(r.ok){P.mudd_balance=r.mudd_balance;await loadGear();render();el.innerHTML=`<div class="green" style="padding:8px">⚒️ ${r.message}</div>`;}else el.innerHTML=`<div class="red">${r.error}</div>`;}
+async function equipGear(id,equip=true){await api("equip_gear",{gear_id:id,equipped:equip});await loadGear();render();}
+async function showMarket(){const r=await api("load_market");const el=document.getElementById("marketResult");if(r.ok&&r.listings?.length){el.innerHTML="<h3>Market</h3>"+r.listings.map(l=>`<div class="stat-row"><span class="stat-label">${l.nft_name||l.name} (${l.rarity})</span><span class="stat-val gold">${l.price_mudd||l.price_mudd_ore||"?"} MUDD</span></div>`).join("")+`<button class="btn btn-cyan" onclick="document.getElementById('marketResult').innerHTML=''">Close</button>`;}else el.innerHTML=`<div class="muted">No active listings.</div>`;}
+function renderWallet(){const ore=P?.mudd_ore_balance||0,mudd=P?.mudd_balance||0,wallet=P?.ton_wallet_address||"",tw=P?.total_withdrawn||0;let kb="",msg=`<div class="stat-row"><span class="stat-label">MuddOre</span><span class="stat-val cyan">${ore}</span></div><div class="stat-row"><span class="stat-label">MUDD Token</span><span class="stat-val gold">${mudd}</span></div><div class="stat-row"><span class="stat-label">Claimable MUDD</span><span class="stat-val green">${Math.floor(ore/1000)}</span></div><div class="stat-row"><span class="stat-label">Total Withdrawn</span><span class="stat-val">${tw} MUDD</span></div>`;if(wallet){msg+=`<div style="margin:8px 0;padding:8px;background:#0a1a2a;border-radius:6px;font-size:11px;word-break:break-all">⛓️ ${wallet}</div>`;if(ore>=1000){kb=`<div class="grid2"><button class="btn btn-cyan" onclick="doWithdraw(1000)">1 MUDD</button><button class="btn btn-cyan" onclick="doWithdraw(2000)">2 MUDD</button></div><div class="grid2"><button class="btn btn-cyan" onclick="doWithdraw(5000)">5 MUDD</button><button class="btn btn-cyan" onclick="doWithdraw(10000)">10 MUDD</button></div><button class="btn btn-gold" onclick="doWithdraw(${Math.floor(ore/1000)*1000})">Withdraw All (${Math.floor(ore/1000)} MUDD)</button>`;}else kb=`<div class="muted" style="text-align:center">Need 1000+ MuddOre to withdraw</div>`;kb+=`<button class="btn" onclick="linkWallet()">🔗 Re-link Wallet</button>`;}else{kb=`<div class="muted" style="text-align:center;margin:8px 0">No wallet linked</div><button class="btn btn-cyan" onclick="linkWallet()">🔗 Link TON Wallet</button>`;}let wh="";if(WH.length){wh=`<div class="card"><h3>Withdrawal History</h3>${WH.map(h=>`<div class="hist-row"><div class="hist-date">${h.date||""}</div><div style="display:flex;justify-content:space-between"><span>${h.mudd_amount||h.mudd_ore_amount||0} MUDD</span><span class="hist-status ${h.status==="success"?"green":h.status==="pending"?"gold":"red"}">${h.status||""}</span></div></div>`).join("")}</div>`;}return `<div class="card"><h2>💰 Wallet</h2>${msg}</div><div class="card">${kb}<div id="walletResult"></div></div>${wh}`;}
+async function linkWallet(){const a=prompt("Enter your TON wallet address (UQ... or EQ...):");if(!a)return;const r=await api("link_wallet",{wallet_address:a});const el=document.getElementById("walletResult");if(r.ok){await load();render();}else el.innerHTML=`<div class="red">${r.error||"Failed"}</div>`;}
+async function doWithdraw(amt){const r=await api("withdraw",{mudd_ore_amount:amt});const el=document.getElementById("walletResult");if(r.ok&&r.status==="success"){await load();await loadHistory();render();el.innerHTML=`<div class="green">✅ ${r.mudd_sent} MUDD sent!</div>`;}else if(r.ok&&r.status==="pending"){await load();await loadHistory();render();el.innerHTML=`<div class="gold">⏳ ${r.mudd_sent} MUDD queued.</div>`;}else el.innerHTML=`<div class="red">❌ ${r.error||"Failed"}</div>`;}
+function renderStats(){const comp=P?.companion||"";const comps={"Sable":"🐺","Kaelith":"🦅","Vespera":"🦋","Lirien":"🦌","Thorne":"🐍"};const compAbilities={"Sable":"+10% casino payouts","Kaelith":"+15% mining yield","Vespera":"+20% journaling XP","Lirien":"+25% bond growth","Thorne":"+10% forge rarity"};let s=`<div class="card"><h2>📊 Stats</h2><div class="stat-row"><span class="stat-label">Name</span><span class="stat-val">${P?.full_name||P?.username||"Seeker"}</span></div><div class="stat-row"><span class="stat-label">Queen</span><span class="stat-val">${P?.queen_name||"—"}</span></div><div class="stat-row"><span class="stat-label">Queen Bond</span><span class="stat-val gold">${P?.queen_bond||0}/100</span></div><div class="stat-row"><span class="stat-label">Growth XP</span><span class="stat-val cyan">${P?.growth_xp||0}</span></div><div class="stat-row"><span class="stat-label">Streak</span><span class="stat-val">${P?.streak_days||0} days</span></div><div class="stat-row"><span class="stat-label">Glyph</span><span>${badge(P?.glyph_state||"Seed")}</span></div><div class="stat-row"><span class="stat-label">MuddOre</span><span class="stat-val cyan">${P?.mudd_ore_balance||0}</span></div><div class="stat-row"><span class="stat-label">MUDD</span><span class="stat-val gold">${P?.mudd_balance||0}</span></div><div class="stat-row"><span class="stat-label">Burned</span><span class="stat-val red">${P?.total_mudd_burned||0}</span></div></div>`;if(comp&&comps[comp]){s+=`<div class="card"><h3>🦊 Companion</h3><div style="text-align:center;padding:8px"><div style="font-size:48px">${comps[comp]}</div><div class="gold" style="font-size:16px;font-weight:bold">${comp}</div><div class="muted" style="font-size:12px">${compAbilities[comp]||""}</div><div class="stat-row" style="margin-top:8px"><span class="stat-label">Bond</span><span class="stat-val">${P?.companion_bond||0}/100</span></div></div></div>`;}if(LB.length){s+=`<div class="card"><h3>🏆 Leaderboard</h3>${LB.slice(0,10).map((p,i)=>`<div class="lb-row"><span class="lb-rank">${i+1}</span><div class="lb-info"><div>${p.full_name||p.username||"Seeker"}</div><div class="lb-xp">${p.growth_xp||0} XP · ${p.glyph_state||"Seed"} · ${p.companion||"—"}</div></div></div>`).join("")}</div>`;}return s;}
+const R={mine:renderMine,glyph:renderGlyph,casino:renderCasino,forge:renderForge,wallet:renderWallet,stats:renderStats};
+let curTab="mine";
+function render(){document.getElementById("app").innerHTML=R[curTab]();}
+async function switchTab(t){curTab=t;document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b.dataset.t===t));if(t==="casino")await loadGlyph();render();}
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>switchTab(b.dataset.t)));
+(async()=>{await load();await loadGlyph();render();})();
+</script>
+</body>
+</html>

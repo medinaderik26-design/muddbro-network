@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-const HTML_URL = "https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/9ee256b23_ringmine_ui_v4.html";
+const HTML_URL = "https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/a8e56f044_ringmine_ui_v5.html";
 Deno.serve(async (req: Request) => {
   if (req.method === "POST") {
     try {
