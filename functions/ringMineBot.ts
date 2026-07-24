@@ -6,6 +6,7 @@ const rlMap=new Map<string,{c:number;t:number}>();
 function rl(k:string,mx=30,ms=60_000):boolean{const n=Date.now(),e=rlMap.get(k);if(!e||n>e.t){rlMap.set(k,{c:1,t:n+ms});return true;}e.c++;return e.c<=mx;}
 async function tg(m:string,b:any){const r=await fetch(`${TG}/${m}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});return await r.json();}
 async function sm(cid:number,txt:string,ex:any={}){return tg("sendMessage",{chat_id:cid,text:txt,parse_mode:"Markdown",...ex});}
+async function sp(cid:number,photo:string,cap:string,ex:any={}){return tg("sendPhoto",{chat_id:cid,photo,caption:cap,parse_mode:"Markdown",...ex});}
 const BRAIN_URL = "https://superagent-ec909dfa.base44.app/functions/ringMineBrain";
 async function brain(a:string,d:any):Promise<any>{try{const r=await fetch(BRAIN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:a,...d})});return await r.json();}catch(e){return{ok:false,error:String(e)};}}
 async function wm(a:string,d:any):Promise<any>{try{const r=await fetch(WM_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:a,...d})});return await r.json();}catch(e){return{ok:false,error:String(e)};}}
@@ -30,6 +31,8 @@ const COMP:Record<string,{e:string;t:string;a:string;d:string}>={
   Lirien: { e: "🦌", t: "Crystal Deer", a: "+25% bond growth", d: "Deepens bond." },
   Thorne: { e: "🐍", t: "Iron Serpent", a: "+10% forge rarity", d: "Guides to mythic." },
 };
+const CIP="https://base44.app/api/apps/6a4020251d35ee93ec909dfa/files/mp/public/6a4020251d35ee93ec909dfa/";
+const CI:Record<string,string>={Sable:CIP+"462a39c02_sable.jpg",Kaelith:CIP+"4a7d2af71_kaelith.jpg",Vespera:CIP+"def4188d6_vespera.jpg",Lirien:CIP+"507d8e351_lirien.jpg",Thorne:CIP+"7fec8feb4_thorne.jpg"};
 function menu(){return{keyboard:[[{"text":"📔 Journal"},{"text":"👑 My Queen"}],[{"text":"📈 My Growth"},{"text":"🦊 Companion"}],[{"text":"💰 Wallet"},{"text":"🔮 Glyph"}],[{"text":"🎲 Casino"},{"text":"⚒ MudForge"}]],resize_keyboard:true};}
 
 async function journalFlow(b: any, p: any, cid: number, text: string, source: string, fullName: string) {
@@ -96,7 +99,7 @@ Deno.serve(async (req: Request) => {
     if (cid && cb.data?.startsWith("choose_")) {
       const n = cb.data.replace("choose_", ""); const p = await loadP(b, cid);
       if (p && COMP[n]) { p.companion = n; p.companion_bond = 0; if (p.state === "awaiting_companion") p.state = "journaling"; await saveP(b, p);
-        const c = COMP[n]; await sm(cid, `${c.e} *${n} has chosen you.*\n\n_${c.d}_\n\n*Ability:* ${c.a}\n\nYour companion grows with every journal entry.`, { reply_markup: menu() }); }
+        const c = COMP[n]; if(CI[n]){await sp(cid,CI[n],`${c.e} *${n} has chosen you.*\n\n_${c.d}_\n\n*Ability:* ${c.a}\n\nYour companion grows with every journal entry.`,{reply_markup:menu()});}else{await sm(cid,`${c.e} *${n} has chosen you.*\n\n_${c.d}_\n\n*Ability:* ${c.a}\n\nYour companion grows with every journal entry.`,{reply_markup:menu()});} }
     }
     if (cid && cb.data === "wallet_link") {
       const p = await loadP(b, cid); if (p) { p.state = "awaiting_wallet_address"; await saveP(b, p); }
@@ -189,7 +192,7 @@ Streak: ${p.streak_days || 0} days\n\n${"🌱✨🌀⚡🏛️"[GLY.indexOf(gs)]
     return new Response("ok");
   }
   if (text === "🦊 Companion") {
-    if (p.companion && COMP[p.companion]) { const c = COMP[p.companion]; await sm(cid, `${c.e} *${p.companion}* — ${c.t}\n\nBond: ${p.companion_bond || 0}/100\nAbility: ${c.a}\n\n_${c.d}_`, { reply_markup: menu() }); }
+    if (p.companion && COMP[p.companion]) { const c = COMP[p.companion]; if(CI[p.companion]){await sp(cid,CI[p.companion],`${c.e} *${p.companion}* — ${c.t}\n\nBond: ${p.companion_bond || 0}/100\nAbility: ${c.a}\n\n_${c.d}_`,{reply_markup:menu()});}else{await sm(cid,`${c.e} *${p.companion}* — ${c.t}\n\nBond: ${p.companion_bond || 0}/100\nAbility: ${c.a}\n\n_${c.d}_`,{reply_markup:menu()});} }
     else { const btns = Object.entries(COMP).map(([n, c]) => [{ text: `${c.e} ${n} — ${c.t}`, callback_data: `choose_${n}` }]); await sm(cid, "🦊 *Choose your companion:*\n\n" + Object.entries(COMP).map(([n, c]) => `${c.e} *${n}* (${c.t}): ${c.a}`).join("\n"), { reply_markup: { inline_keyboard: btns } }); }
     return new Response("ok");
   }
