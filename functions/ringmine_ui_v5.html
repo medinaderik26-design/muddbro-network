@@ -142,7 +142,7 @@ const API=window.__RINGMINE_API_URL__||"https://superagent-ec909dfa.base44.app/f
 let P=null,GL=null,GE=[],LB=[],WH=[];
 const TID=window.Telegram?.WebApp?.initDataUnsafe?.user?.id||"test123";
 async function api(a,d={}){try{const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:a,telegram_id:String(TID),...d})});return await r.json();}catch(e){return{ok:false,error:String(e)};}}
-async function load(){const d=await api("load");if(d.ok&&d.player)P=d.player;}
+async function load(){const d=await api("load");if(d.ok&&d.player){P=d.player;document.getElementById("debug")?.remove();}else{const dbg=document.createElement("div");dbg.id="debug";dbg.style.cssText="position:fixed;top:0;left:0;right:0;z-index:999;background:#330a0a;color:#ff6666;padding:6px;font-size:10px;text-align:center";dbg.textContent="TID:"+String(TID)+" | API:"+(d.error||"no player");document.body.appendChild(dbg);setTimeout(()=>dbg.remove(),5000);}}
 async function loadGlyph(){const d=await api("load_glyph");if(d.ok)GL=d;}
 async function loadGear(){const d=await api("load_gear");if(d.ok)GE=d.gear||[];}
 async function loadLB(){const d=await api("leaderboard");if(d.ok)LB=d.leaderboard||[];}
