@@ -138,6 +138,8 @@ input[type=range]{accent-color:#a0f0ff}
 <button class="tab" data-t="stats"><span class="ti">📊</span>Stats</button>
 </div>
 <script>
+// Telegram Mini App init — MUST call ready() or app stays blank
+try{window.Telegram?.WebApp?.ready();window.Telegram?.WebApp?.expand();}catch(e){}
 const API="https://superagent-ec909dfa.base44.app/functions/ringMineApp";
 let P=null,GL=null,GE=[],LB=[],WH=[];
 const TID=window.Telegram?.WebApp?.initDataUnsafe?.user?.id||"test123";
